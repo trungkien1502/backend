@@ -3,26 +3,21 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 
-const authController = require("./src/controllers/authController");
-const authMiddleware = require("./src/middlewares/authMiddleware");
+const authRoute = require("./src/modules/auth/authRoute");
+
+const movieRoute = require("./src/modules/movie/movieRoute");
+const roomRoute = require("./src/modules/room/roomRoute");
+const cinemaRoute = require("./src/modules/cinema/cinemaRoute");
+
+//const authMiddleware = require("./src/middlewares/authMiddleware");
 
 
-console.log("Controller path:", require.resolve("./src/controllers/authController"));
-console.log(authController);
+app.use("/cinemas", cinemaRoute);
+app.use("/movies", movieRoute);
+app.use("/rooms", roomRoute);
+app.use("/auth", authRoute);
 
-app.get("/", (req, res) => {
-    res.send("Backend running");
-});
-
-console.log(authController);
-
-app.post("/auth/register", authController.register);
-app.post("/auth/login", authController.login);
-app.get("/auth/me", authMiddleware, authController.getCurrentUser);
-app.post("/auth/changepassword", authMiddleware, authController.changePassword);
-app.post("/auth/forgotpassword", authController.forgotPassword);
-app.post("/auth/resetpassword", authController.resetPassword);
-//app.post("/auth/verifyotp", authController.verifyOTP);
+console.log("Controller path:", require.resolve("./src/modules/auth/authController"));
 
 app.listen(8080, () => {
     console.log("Server running");

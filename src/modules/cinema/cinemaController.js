@@ -9,12 +9,6 @@ exports.getAllCinemas = async (req, res) => {
     }
 };
 
-router.get("/cinemas/:id", cinemaController.getCinemaById);
-router.post("/cinemas", authMiddleware, cinemaController.createCinema);
-router.put("/cinemas/:id", authMiddleware, cinemaController.updateCinema);
-router.delete("/cinemas/:id", authMiddleware, cinemaController.deleteCinema);
-
-
 exports.getCinemaById = async (req, res) => {
     try {
         const cinema = await cinemaService.getCinemaById(req.params.id);
@@ -33,7 +27,7 @@ exports.createCinema = async (req, res) => {
         res.status(201).json(cinema);
     } catch (error) {
         res.status(400).json({ message: error.message });
-    }       
+    }
 };
 
 exports.updateCinema = async (req, res) => {

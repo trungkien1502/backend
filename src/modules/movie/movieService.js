@@ -20,7 +20,7 @@ exports.getMovieById = async (id) => {
     const movie = await prisma.movie.findUnique({
         where: { id: parseInt(id) }
     });
-    
+
     if (!movie) {
         throw new Error("Movie not found");
     }
@@ -28,14 +28,24 @@ exports.getMovieById = async (id) => {
 };
 
 exports.createMovie = async (data) => {
-    return await prisma.movie.create({
-        data: {
-            title: data.title,
-            description: data.description,
-            releaseDate: new Date(data.releaseDate),
-            rating: data.rating
-        }
-    });
+    const payload = {
+        title: data.title,
+        description: data.description,
+        duration: Number(data.duration),
+        poster: data.poster
+    };
+
+    if (data.releaseDate) {
+        const date = new Date(data.releaseDate);
+        if (isNaN(date)) throw new Error("releaseDate không hợp lệ");
+        payload.releaseDate = date;
+    }
+
+    if (data.status) {
+        payload.status = data.status;
+    }
+
+    return await prisma.movie.create({ data: payload });
 };
 
 exports.updateMovie = async (id, data) => {
@@ -66,7 +76,7 @@ exports.deleteMovie = async (id) => {
     if (!movie) {
         throw new Error("Movie not found");
     }
-    
+
     return await prisma.movie.delete({
         where: { id: parseInt(id) }
     });
