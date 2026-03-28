@@ -7,7 +7,7 @@ const getAllCinemas = async () => {
 
 const getCinemaById = async (id) => {
     return await prisma.cinema.findUnique({
-        where: { id }
+        where: { id: Number(id) }
     });
 };
 
@@ -19,14 +19,14 @@ const createCinema = async (cinemaData) => {
 
 const updateCinema = async (id, cinemaData) => {
     return await prisma.cinema.update({
-        where: { id },
+        where: { id: Number(id) },
         data: cinemaData
     });
 };
 
 const deleteCinema = async (id) => {
     return await prisma.cinema.delete({
-        where: { id }
+        where: { id: Number(id) }
     });
 };
 

@@ -12,13 +12,14 @@ exports.getAllRooms = async (query) => {
                 },
             }
             : {},
-        orderBy: { createdAt: "desc" },
+            orderBy :
+            { id : "desc" }
     });
 };
 
 exports.getRoomById = async (id) => {
     const room = await prisma.room.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: Number(id) }
     });
     
     if (!room) {
@@ -31,14 +32,16 @@ exports.createRoom = async (data) => {
     return await prisma.room.create({
         data: {
             name: data.name,
-            capacity: data.capacity
+            capacity: data.capacity,
+            totalSeats: data.totalSeats,
+            cinemaId: data.cinemaId
         }
     });
 };
 
 exports.updateRoom = async (id, data) => {
     const room = await prisma.room.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: Number(id) }
     });
 
     if (!room) {
@@ -46,17 +49,17 @@ exports.updateRoom = async (id, data) => {
     }
 
     return await prisma.room.update({
-        where: { id: parseInt(id) },
+        where: { id: Number(id) },
         data: {
             name: data.name,
-            capacity: data.capacity
+            totalSeats : data.totalSeats
         }
     });
 };
 
 exports.deleteRoom = async (id) => {
     const room = await prisma.room.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: Number(id) }
     });
 
     if (!room) {
@@ -64,14 +67,14 @@ exports.deleteRoom = async (id) => {
     }
 
     return await prisma.room.delete({
-        where: { id: parseInt(id) }
+        where: { id: Number(id) }
     });
 };
 
 // exports.getRoomsByCinemaId = async (cinemaId) => {
 //     return await prisma.room.findMany({
 //         where: {
-//             cinemaId: parseInt(cinemaId)
+//             cinemaId: Number(cinemaId)
 //         },
 //         orderBy: { createdAt: "desc" },
 //     });

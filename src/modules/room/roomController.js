@@ -2,7 +2,8 @@ const roomService = require("./roomService");
 
 exports.getAllRooms = async (req, res) => {
     try {
-        const rooms = await roomService.getAllRooms();
+        const query = req.query || {};
+        const rooms = await roomService.getAllRooms(query);
         res.json(rooms);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -11,7 +12,7 @@ exports.getAllRooms = async (req, res) => {
 
 exports.getRoomById = async (req, res) => {
     try {
-        const room = await roomService.getRoomById(req.params.id); 
+        const room = await roomService.getRoomById(req.params.id);
         if (!room) {
             return res.status(404).json({ message: "Room not found" });
         }
@@ -36,7 +37,10 @@ exports.updateRoom = async (req, res) => {
         if (!room) {
             return res.status(404).json({ message: "Room not found" });
         }
-        res.json(room);
+        res.json({
+            message: "Room updated successfully",
+            data: room
+        });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

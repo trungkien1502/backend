@@ -2,7 +2,7 @@ const movieService = require("./movieService");
 
 exports.getAllMovies = async (req, res) => {
     try {
-        const movies = await movieService.getAllMovies();
+        const movies = await movieService.getAllMovies(req.query);
         res.json(movies);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -27,7 +27,7 @@ exports.createMovie = async (req, res) => {
         res.status(201).json(movie);
     } catch (error) {
         res.status(400).json({ message: error.message });
-    }       
+    }
 };
 
 exports.updateMovie = async (req, res) => {
@@ -52,5 +52,5 @@ exports.deleteMovie = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};  
+};
 
