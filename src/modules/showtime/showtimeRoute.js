@@ -3,7 +3,7 @@ const router = express.Router();
 
 const showtimeController = require("../showtime/showtimeController");
 
-router.get("/", showtimeController.getAllShowtimes);
+router.get("/", showtimeController.getShowtimes);
 router.get("/:id", showtimeController.getShowtimeById);
 router.post("/", showtimeController.createShowtime);
 router.put("/:id", showtimeController.updateShowtime);

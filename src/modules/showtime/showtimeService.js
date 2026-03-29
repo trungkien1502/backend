@@ -1,11 +1,11 @@
 const prisma = require("../../config/prisma");
 const bcrypt = require("bcrypt");
 
-exports.getAllShowtime = async (query = {}) => {
-    return await prisma.showtime.findMany({
-        orderBy: { id: "desc" }
-    });
-};
+// exports.getAllShowtime = async (query = {}) => {
+//     return await prisma.showtime.findMany({
+//         orderBy: { id: "desc" }
+//     });
+// };
 
 exports.getShowtimeById = async (id) => { //get theo id showtime
     const showtime = await prisma.showtime.findUnique({
@@ -122,6 +122,7 @@ exports.updateShowtime = async (id, data) => {
         where: { id: Number(id) },
         data: {
             startTime: new Date(data.startTime),
+            endTime: new Date(data.endTime),
             movieId: data.movieId,
             roomId: data.roomId,
             price: data.price
