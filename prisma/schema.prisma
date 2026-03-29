@@ -97,6 +97,7 @@ model Showtime {
   movieId   Int
   roomId    Int
   startTime DateTime
+  endTime   DateTime
   price     Decimal
 
   movie        Movie          @relation(fields: [movieId], references: [id])
@@ -104,13 +105,17 @@ model Showtime {
   bookings     Booking[]
   showtimeSeats ShowtimeSeat[]
 }
-
+enum SeatStatus {
+  AVAILABLE
+  HOLD
+  BOOKED
+}
 model ShowtimeSeat {
   id         Int    @id @default(autoincrement())
   showtimeId Int
   seatId     Int
-  status     String @default("available")
-
+  status     SeatStatus 
+  holdUntil  DateTime?   // ⏱️ thời gian giữ ghế
   showtime   Showtime @relation(fields: [showtimeId], references: [id])
   seat       Seat     @relation(fields: [seatId], references: [id])
 
