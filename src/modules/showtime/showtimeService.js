@@ -132,16 +132,24 @@ exports.updateShowtime = async (id, data) => {
 
 
 exports.deleteShowtime = async (id) => {
-    const showtime = await prisma.showtime.findUnique({
-        where: { id: parseInt(id) }
+    const showtimeId = Number(id);
+
+    // 1. check có booking không
+    const hasBooking = await prisma.booking.findFirst({
+        where: { showtimeId }
     });
 
-    if (!showtime) {
-        throw new Error("Showtime not found");
+    if (hasBooking) {
+        throw new Error("Không thể xoá showtime đã có người đặt vé");
     }
+    // 2. xoá showtimeSeat trước
+    await prisma.showtimeSeat.deleteMany({
+        where: { showtimeId }
+    });
 
+    // 3. xoá showtime
     return await prisma.showtime.delete({
-        where: { id: parseInt(id) }
+        where: { id: showtimeId }
     });
 };
 

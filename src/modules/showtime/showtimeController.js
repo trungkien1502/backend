@@ -1,9 +1,9 @@
 const showtimeService = require("./showtimeService");
 
-exports.getAllShowtimes = async (req, res) => {
+exports.getShowtimes = async (req, res) => {
     try {
         const query = req.query || {};
-        const showtimes = await showtimeService.getAllShowtimes(query);
+        const showtimes = await showtimeService.getShowtimes(query);
         res.json(showtimes);
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -14,34 +14,44 @@ exports.getSeatsByShowtime = async (showtimeId) => {
 };
 
 // 🎯 HOLD ghế (giữ ghế 5 phút)
-exports.holdSeats = async (showtimeId, seatIds) => {
+exports.holdSeats = async (showtimeId, seatCodes) => {
     const now = new Date();
     const holdUntil = new Date(now.getTime() + 5 * 60 * 1000);
 
     return await prisma.$transaction(async (tx) => {
-        const seats = await tx.showtimeSeat.findMany({
-            where: {
-                showtimeId: Number(showtimeId),
-                seatId: { in: seatIds }
-            }
+
+        // 1. lấy room
+        const showtime = await tx.showtime.findUnique({
+            where: { id: Number(showtimeId) },
+            select: { roomId: true }
         });
 
-        // ❗ check trạng thái
-        for (const seat of seats) {
-            if (seat.status === "BOOKED") {
-                throw new Error(`Seat ${seat.seatId} already booked`);
-            }
+        if (!showtime) throw new Error("Showtime not found");
 
-            if (seat.status === "HOLD" && seat.holdUntil > now) {
-                throw new Error(`Seat ${seat.seatId} is being held`);
-            }
+        // 2. convert seatNumber → seatId
+        const seats = await tx.seat.findMany({
+            where: {
+                seatNumber: { in: seatCodes },
+                roomId: showtime.roomId
+            },
+            select: { id: true }
+        });
+
+        const seatIds = seats.map(s => s.id);
+
+        if (seatIds.length !== seatCodes.length) {
+            throw new Error("Some seats not found in this room");
         }
 
-        // update HOLD
-        await tx.showtimeSeat.updateMany({
+        // 3. update HOLD (atomic)
+        const result = await tx.showtimeSeat.updateMany({
             where: {
                 showtimeId: Number(showtimeId),
-                seatId: { in: seatIds }
+                seatId: { in: seatIds },
+                OR: [
+                    { status: "AVAILABLE" },
+                    { status: "HOLD", holdUntil: { lt: now } }
+                ]
             },
             data: {
                 status: "HOLD",
@@ -49,51 +59,57 @@ exports.holdSeats = async (showtimeId, seatIds) => {
             }
         });
 
+        // 4. check race condition
+        if (result.count !== seatIds.length) {
+            throw new Error("Some seats were just taken");
+        }
+
         return { holdUntil };
     });
 };
 
-// 🎯 BOOK ghế
-exports.bookSeats = async (showtimeId, seatIds) => {
+
+// 🎯 RELEASE ghế
+exports.releaseSeats = async (showtimeId, seatCodes) => {
     return await prisma.$transaction(async (tx) => {
-        const seats = await tx.showtimeSeat.findMany({
-            where: {
-                showtimeId: Number(showtimeId),
-                seatId: { in: seatIds }
-            }
+
+        // 1. lấy roomId từ showtime
+        const showtime = await tx.showtime.findUnique({
+            where: { id: Number(showtimeId) },
+            select: { roomId: true }
         });
 
-        for (const seat of seats) {
-            if (seat.status !== "HOLD") {
-                throw new Error(`Seat ${seat.seatId} must be held first`);
-            }
+        if (!showtime) {
+            throw new Error("Showtime not found");
         }
 
-        await tx.showtimeSeat.updateMany({
+        // 2. convert seatCodes → seatIds (đúng phòng)
+        const seats = await tx.seat.findMany({
+            where: {
+                seatNumber: { in: seatCodes },
+                roomId: showtime.roomId   // 🔥 FIX QUAN TRỌNG
+            },
+            select: { id: true }
+        });
+
+        const seatIds = seats.map(s => s.id);
+
+        if (seatIds.length !== seatCodes.length) {
+            throw new Error("Some seats not found in this room");
+        }
+
+        // 3. update
+        const result = await tx.showtimeSeat.updateMany({
             where: {
                 showtimeId: Number(showtimeId),
                 seatId: { in: seatIds }
             },
             data: {
-                status: "BOOKED",
+                status: "AVAILABLE",
                 holdUntil: null
             }
         });
 
-        return true;
-    });
-};
-
-// 🎯 RELEASE ghế
-exports.releaseSeats = async (showtimeId, seatIds) => {
-    return await prisma.showtimeSeat.updateMany({
-        where: {
-            showtimeId: Number(showtimeId),
-            seatId: { in: seatIds }
-        },
-        data: {
-            status: "AVAILABLE",
-            holdUntil: null
-        }
+        return result;
     });
 };

@@ -94,20 +94,17 @@ exports.getBookingById = async (id) => {
 
 exports.cancelBooking = async (id) => {
     return await prisma.$transaction(async (tx) => {
-
         const booking = await tx.booking.findUnique({
             where: { id: Number(id) },
             include: { bookingSeats: true }
         });
 
         if (!booking) throw new Error("Booking not found");
-
         // 1. update booking
         await tx.booking.update({
             where: { id: booking.id },
             data: { status: "CANCELLED" }
         });
-
         // 2. trả ghế về AVAILABLE
         const showtimeSeatIds = booking.bookingSeats.map(b => b.showtimeSeatId);
 
@@ -118,7 +115,6 @@ exports.cancelBooking = async (id) => {
                 holdUntil: null
             }
         });
-
         return true;
     });
 };

@@ -1,23 +1,22 @@
 
-router.get("/", showtimeseatController.getAllShowtimeSeats);
-router.get("/:id", showtimeseatController.getShowtimeSeatById);
-router.post("/", showtimeseatController.createShowtimeSeat);
-router.put("/:id", showtimeseatController.updateShowtimeSeat);
-router.delete("/:id", showtimeseatController.deleteShowtimeSeat);
+// router.get("/", showtimeseatController.getAllShowtimeSeats);
+// router.get("/:id", showtimeseatController.getShowtimeSeatById);
+// router.post("/", showtimeseatController.createShowtimeSeat);
+// router.put("/:id", showtimeseatController.updateShowtimeSeat);
+// router.delete("/:id", showtimeseatController.deleteShowtimeSeat);
 
-module.exports = router;
 const express = require("express");
 const router = express.Router();
 const showtimeseatController = require("../showtimeseat/showtimeseatController");
 
 // 🎯 lấy danh sách ghế theo showtime
-router.get("/showtimeseat/:showtimeId", showtimeseatController.getSeatsByShowtime);
+router.get("/:showtimeId", showtimeseatController.getSeatsByShowtime);
 
 // 🎯 giữ ghế
 router.post("/hold", showtimeseatController.holdSeats);
 
-// 🎯 confirm booking (đặt ghế)
-router.post("/book", showtimeseatController.bookSeats);
+// // 🎯 confirm booking (đặt ghế)
+// router.post("/book", showtimeseatController.bookSeats);
 
 // 🎯 release ghế (optional)
 router.post("/release", showtimeseatController.releaseSeats);
