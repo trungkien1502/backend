@@ -29,36 +29,12 @@ exports.getSeatsByShowtime = async (showtimeId) => {
 };
 
 // 🎯 HOLD ghế (giữ ghế 5 phút)
-exports.holdSeats = async (showtimeId, seatCodes, userId) => {
+exports.holdSeats = async (showtimeId, seatIds, userId) => {
     const now = new Date();
     const holdUntil = new Date(now.getTime() + 5 * 60 * 1000);
 
     return await prisma.$transaction(async (tx) => {
 
-        // 1. lấy room
-        const showtime = await tx.showtime.findUnique({
-            where: { id: Number(showtimeId) },
-            select: { roomId: true }
-        });
-
-        if (!showtime) throw new Error("Showtime not found");
-
-        // 2. convert seatNumber → seatId
-        const seats = await tx.seat.findMany({
-            where: {
-                seatNumber: { in: seatCodes },
-                roomId: showtime.roomId
-            },
-            select: { id: true }
-        });
-
-        const seatIds = seats.map(s => s.id);
-
-        if (seatIds.length !== seatCodes.length) {
-            throw new Error("Some seats not found in this room");
-        }
-
-        // 3. update HOLD (atomic)
         const result = await tx.showtimeSeat.updateMany({
             where: {
                 showtimeId: Number(showtimeId),
@@ -75,7 +51,6 @@ exports.holdSeats = async (showtimeId, seatCodes, userId) => {
             }
         });
 
-        // 4. check race condition
         if (result.count !== seatIds.length) {
             throw new Error("Some seats were just taken");
         }
@@ -84,37 +59,10 @@ exports.holdSeats = async (showtimeId, seatCodes, userId) => {
     });
 };
 
-
 // 🎯 RELEASE ghế
-exports.releaseSeats = async (showtimeId, seatCodes, userId) => {
+exports.releaseSeats = async (showtimeId, seatIds, userId) => {
     return await prisma.$transaction(async (tx) => {
 
-        // 1. lấy roomId từ showtime
-        const showtime = await tx.showtime.findUnique({
-            where: { id: Number(showtimeId) },
-            select: { roomId: true }
-        });
-
-        if (!showtime) {
-            throw new Error("Showtime not found");
-        }
-
-        // 2. convert seatCodes → seatIds (đúng phòng)
-        const seats = await tx.seat.findMany({
-            where: {
-                seatNumber: { in: seatCodes },
-                roomId: showtime.roomId   // 🔥 FIX QUAN TRỌNG
-            },
-            select: { id: true }
-        });
-
-        const seatIds = seats.map(s => s.id);
-
-        if (seatIds.length !== seatCodes.length) {
-            throw new Error("Some seats not found in this room");
-        }
-
-        // 3. update
         const result = await tx.showtimeSeat.updateMany({
             where: {
                 showtimeId: Number(showtimeId),

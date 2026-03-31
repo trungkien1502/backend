@@ -1,10 +1,10 @@
-const service = require("./bookingService");
+const bookingService = require("./bookingService");
 
 exports.createBooking = async (req, res) => {
     try {
         const { userId, showtimeId, seatIds } = req.body;
 
-        const data = await service.createBooking({
+        const data = await bookingService.createBooking({
             userId,
             showtimeId,
             seatIds
@@ -23,7 +23,7 @@ exports.createBooking = async (req, res) => {
 
 exports.getBookingsByUser = async (req, res) => {
     try {
-        const data = await service.getBookingsByUser(req.params.userId);
+        const data = await bookingService.getBookingsByUser(req.params.userId);
         res.json({ data });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -32,7 +32,7 @@ exports.getBookingsByUser = async (req, res) => {
 
 exports.getBookingById = async (req, res) => {
     try {
-        const data = await service.getBookingById(req.params.id);
+        const data = await bookingService.getBookingById(req.params.id);
         res.json({ data });
     } catch (error) {
         res.status(404).json({ message: error.message });
@@ -41,7 +41,7 @@ exports.getBookingById = async (req, res) => {
 
 exports.cancelBooking = async (req, res) => {
     try {
-        const data = await service.cancelBooking(req.params.id);
+        const data = await bookingService.cancelBooking(req.params.id);
         res.json({ message: "Cancelled", data });
     } catch (error) {
         res.status(400).json({ message: error.message });

@@ -1,65 +1,47 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  
 }
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id       Int     @id @default(autoincrement())
-  name     String
-  email    String  @unique
-  password String
-  phone     String?
-  gender    String?
-  birthDate DateTime?
-  createdAt DateTime @default(now())
-
-
-
-  bookings Booking[]
+  id            Int             @id @default(autoincrement())
+  name          String
+  email         String          @unique
+  password      String
+  birthDate     DateTime?
+  createdAt     DateTime        @default(now())
+  gender        String?
+  phone         String?
+  bookings      Booking[]
   PasswordReset PasswordReset[]
-
-
 }
+
 model PasswordReset {
-  id        Int     @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
-  user      User      @relation(fields: [userId], references: [id])
-  codeHash  String    // bcrypt hash của mã 6 số
-  expireAt DateTime
+  codeHash  String
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  expireAt  DateTime
+  user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
-enum MovieStatus {
-  COMING_SOON
-  NOW_SHOWING
-  ENDED
-}
-
 model Movie {
-  id          Int       @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   title       String
   description String?
   duration    Int
   poster      String?
   releaseDate DateTime?
-  createdAt   DateTime  @default(now())
-
-  status MovieStatus @default(COMING_SOON)
-  rating      Float? 
+  createdAt   DateTime    @default(now())
+  status      MovieStatus @default(COMING_SOON)
+  rating      Float?
   showtimes   Showtime[]
 }
 
@@ -68,83 +50,95 @@ model Cinema {
   name      String
   location  String?
   createdAt DateTime @default(now())
-
   rooms     Room[]
 }
 
 model Room {
-  id         Int    @id @default(autoincrement())
+  id         Int        @id @default(autoincrement())
   cinemaId   Int
   name       String
   totalSeats Int
-
-  cinema     Cinema @relation(fields: [cinemaId], references: [id])
+  cinema     Cinema     @relation(fields: [cinemaId], references: [id])
   seats      Seat[]
   showtimes  Showtime[]
+
+  @@index([cinemaId], map: "Room_cinemaId_fkey")
 }
 
 model Seat {
-  id         Int    @id @default(autoincrement())
-  roomId     Int
-  seatNumber String
+  id            Int            @id @default(autoincrement())
+  roomId        Int
+  seatNumber    String
+  room          Room           @relation(fields: [roomId], references: [id])
+  showtimeSeats ShowtimeSeat[]
 
-  room           Room           @relation(fields: [roomId], references: [id])
-  showtimeSeats  ShowtimeSeat[]
+  @@index([roomId], map: "Seat_roomId_fkey")
 }
 
 model Showtime {
-  id        Int      @id @default(autoincrement())
-  movieId   Int
-  roomId    Int
-  startTime DateTime
-  endTime   DateTime
-  price     Decimal
-
-  movie        Movie          @relation(fields: [movieId], references: [id])
-  room         Room           @relation(fields: [roomId], references: [id])
-  bookings     Booking[]
+  id            Int            @id @default(autoincrement())
+  movieId       Int
+  roomId        Int
+  startTime     DateTime
+  price         Decimal
+  endTime       DateTime
+  bookings      Booking[]
+  movie         Movie          @relation(fields: [movieId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [id])
   showtimeSeats ShowtimeSeat[]
+
+  @@index([movieId], map: "Showtime_movieId_fkey")
+  @@index([roomId], map: "Showtime_roomId_fkey")
 }
+
+model ShowtimeSeat {
+  id           Int           @id @default(autoincrement())
+  showtimeId   Int
+  seatId       Int
+  status       SeatStatus
+  holdUntil    DateTime?
+  bookingSeats BookingSeat[]
+  seat         Seat          @relation(fields: [seatId], references: [id])
+  showtime     Showtime      @relation(fields: [showtimeId], references: [id])
+
+  @@unique([showtimeId, seatId])
+  @@index([seatId], map: "ShowtimeSeat_seatId_fkey")
+}
+
+model Booking {
+  id           Int           @id @default(autoincrement())
+  userId       Int
+  showtimeId   Int
+  totalPrice   Decimal
+  status       String
+  createdAt    DateTime      @default(now())
+  showtime     Showtime      @relation(fields: [showtimeId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  bookingSeats BookingSeat[]
+
+  @@index([showtimeId], map: "Booking_showtimeId_fkey")
+  @@index([userId], map: "Booking_userId_fkey")
+}
+
+model BookingSeat {
+  id             Int          @id @default(autoincrement())
+  bookingId      Int
+  showtimeSeatId Int
+  booking        Booking      @relation(fields: [bookingId], references: [id])
+  showtimeSeat   ShowtimeSeat @relation(fields: [showtimeSeatId], references: [id])
+
+  @@index([bookingId], map: "BookingSeat_bookingId_fkey")
+  @@index([showtimeSeatId], map: "BookingSeat_showtimeSeatId_fkey")
+}
+
+enum MovieStatus {
+  COMING_SOON
+  NOW_SHOWING
+  ENDED
+}
+
 enum SeatStatus {
   AVAILABLE
   HOLD
   BOOKED
 }
-model ShowtimeSeat {
-  id         Int    @id @default(autoincrement())
-  showtimeId Int
-  seatId     Int
-  status     SeatStatus 
-  holdUntil  DateTime?   
-  showtime   Showtime @relation(fields: [showtimeId], references: [id])
-  seat       Seat     @relation(fields: [seatId], references: [id])
-  heldBy     Int?        
-  user       User? @relation(fields: [heldBy], references: [id]) 
-
-  bookingSeats BookingSeat[]
-
-  @@unique([showtimeId, seatId])
-}
-
-model Booking {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  showtimeId Int
-  totalPrice Decimal
-  status     String
-  createdAt  DateTime @default(now())
-
-  user        User          @relation(fields: [userId], references: [id])
-  showtime    Showtime      @relation(fields: [showtimeId], references: [id])
-  bookingSeats BookingSeat[]
-}
-
-model BookingSeat {
-  id             Int @id @default(autoincrement())
-  bookingId      Int
-  showtimeSeatId Int
-
-  booking        Booking      @relation(fields: [bookingId], references: [id])
-  showtimeSeat   ShowtimeSeat @relation(fields: [showtimeSeatId], references: [id])
-}
-
