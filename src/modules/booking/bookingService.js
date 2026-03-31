@@ -3,6 +3,10 @@ const prisma = require("../../config/prisma");
 exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
     return await prisma.$transaction(async (tx) => {
 
+        if (!userId || !showtimeId || !seatIds?.length) {
+            throw new Error("Invalid input");
+        }
+
         // 1. lấy showtimeSeat
         const seats = await tx.showtimeSeat.findMany({
             where: {
@@ -12,10 +16,15 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
         });
 
         if (seats.length !== seatIds.length) {
-            throw new Error("Seat not found");
+            throw new Error("Seats not found");
         }
-
         const now = new Date();
+
+        for (const seat of seats) {
+            if (seat.heldBy !== userId) {
+                throw new Error(`Seat ${seat.seatId} không thuộc user này`);
+            }
+        }
 
         // 2. check HOLD
         for (const seat of seats) {
@@ -56,15 +65,22 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
         });
 
         // 6. update ghế → BOOKED
-        await tx.showtimeSeat.updateMany({
+        const result = await tx.showtimeSeat.updateMany({
             where: {
-                id: { in: seats.map(s => s.id) }
+                id: { in: seats.map(s => s.id) },
+                heldBy: userId,
+                status: "HOLD"
             },
             data: {
                 status: "BOOKED",
-                holdUntil: null
+                holdUntil: null,
+                heldBy: null
             }
         });
+
+        if (result.count !== seats.length) {
+            throw new Error("Some seats were taken by others");
+        }
 
         return booking;
     });
@@ -101,10 +117,15 @@ exports.cancelBooking = async (id) => {
 
         if (!booking) throw new Error("Booking not found");
         // 1. update booking
+
+        if (booking.status === "CANCELLED") {
+            throw new Error("Booking already cancelled");
+        }
         await tx.booking.update({
             where: { id: booking.id },
             data: { status: "CANCELLED" }
         });
+
         // 2. trả ghế về AVAILABLE
         const showtimeSeatIds = booking.bookingSeats.map(b => b.showtimeSeatId);
 
@@ -112,7 +133,8 @@ exports.cancelBooking = async (id) => {
             where: { id: { in: showtimeSeatIds } },
             data: {
                 status: "AVAILABLE",
-                holdUntil: null
+                holdUntil: null,
+                heldBy: null
             }
         });
         return true;

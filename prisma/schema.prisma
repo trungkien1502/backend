@@ -115,9 +115,11 @@ model ShowtimeSeat {
   showtimeId Int
   seatId     Int
   status     SeatStatus 
-  holdUntil  DateTime?   // ⏱️ thời gian giữ ghế
+  holdUntil  DateTime?   
   showtime   Showtime @relation(fields: [showtimeId], references: [id])
   seat       Seat     @relation(fields: [seatId], references: [id])
+  heldBy     Int?        
+  user       User? @relation(fields: [heldBy], references: [id]) 
 
   bookingSeats BookingSeat[]
 

@@ -13,13 +13,13 @@ exports.getSeatsByShowtime = async (req, res) => {
 
 exports.holdSeats = async (req, res) => {
     try {
-        const { showtimeId } = req.body;
-        const { seatCodes } = req.body;
+        const { seatCodes, userId, showtimeId } = req.body;
 
-        if (!showtimeId) throw new Error("showtimeId missing");
-        if (!seatCodes) throw new Error("seatCodes missing");
+        // if (!showtimeId) throw new Error("showtimeId missing");
+        // if (!seatCodes) throw new Error("seatCodes missing");
+        // if (!userId) throw new Error("userId missing");
 
-        const result = await showtimeseatService.holdSeats(showtimeId, seatCodes);
+        const result = await showtimeseatService.holdSeats(showtimeId, seatCodes, userId);
         res.json(result);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -40,9 +40,9 @@ exports.holdSeats = async (req, res) => {
 
 exports.releaseSeats = async (req, res) => {
     try {
-        const { showtimeId, seatCodes } = req.body;
+        const { showtimeId, seatCodes, userId } = req.body;
 
-        const data = await showtimeseatService.releaseSeats(showtimeId, seatCodes);
+        const data = await showtimeseatService.releaseSeats(showtimeId, seatCodes, userId);
 
         res.json({ message: "Seats released", data });
     } catch (error) {

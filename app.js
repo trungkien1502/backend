@@ -1,4 +1,5 @@
 const express = require("express");
+require("./cron/clearExpiredSeats");
 const app = express();
 
 app.use(express.json());

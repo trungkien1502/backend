@@ -4,6 +4,21 @@ const bcrypt = require("bcrypt");
 
 // 🎯 lấy danh sách ghế
 exports.getSeatsByShowtime = async (showtimeId) => {
+    const now = new Date();
+
+    // 🔥 clear trước
+    await prisma.showtimeSeat.updateMany({
+        where: {
+            showtimeId: Number(showtimeId),
+            status: "HOLD",
+            holdUntil: { lt: now }
+        },
+        data: {
+            status: "AVAILABLE",
+            holdUntil: null,
+            heldBy: null
+        }
+    });
     return await prisma.showtimeSeat.findMany({
         where: { showtimeId: Number(showtimeId) },
         include: {
@@ -55,7 +70,8 @@ exports.holdSeats = async (showtimeId, seatCodes) => {
             },
             data: {
                 status: "HOLD",
-                holdUntil
+                holdUntil,
+                heldBy: userId
             }
         });
 
@@ -102,11 +118,14 @@ exports.releaseSeats = async (showtimeId, seatCodes) => {
         const result = await tx.showtimeSeat.updateMany({
             where: {
                 showtimeId: Number(showtimeId),
-                seatId: { in: seatIds }
+                seatId: { in: seatIds },
+                status: "HOLD",
+                heldBy: userId
             },
             data: {
                 status: "AVAILABLE",
-                holdUntil: null
+                holdUntil: null,
+                heldBy: null
             }
         });
 
