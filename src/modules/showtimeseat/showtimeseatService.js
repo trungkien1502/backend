@@ -29,7 +29,7 @@ exports.getSeatsByShowtime = async (showtimeId) => {
 };
 
 // 🎯 HOLD ghế (giữ ghế 5 phút)
-exports.holdSeats = async (showtimeId, seatCodes) => {
+exports.holdSeats = async (showtimeId, seatCodes, userId) => {
     const now = new Date();
     const holdUntil = new Date(now.getTime() + 5 * 60 * 1000);
 
@@ -86,7 +86,7 @@ exports.holdSeats = async (showtimeId, seatCodes) => {
 
 
 // 🎯 RELEASE ghế
-exports.releaseSeats = async (showtimeId, seatCodes) => {
+exports.releaseSeats = async (showtimeId, seatCodes, userId) => {
     return await prisma.$transaction(async (tx) => {
 
         // 1. lấy roomId từ showtime
