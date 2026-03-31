@@ -26,17 +26,7 @@ exports.holdSeats = async (req, res) => {
     }
 };
 
-// exports.bookSeats = async (req, res) => {
-//     try {
-//         const { showtimeId, seatIds } = req.body;
 
-//         const data = await showtimeseatService.bookSeats(showtimeId, seatIds);
-
-//         res.json({ message: "Booking success", data });
-//     } catch (error) {
-//         res.status(400).json({ message: error.message });
-//     }
-// };
 
 exports.releaseSeats = async (req, res) => {
     try {

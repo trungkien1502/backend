@@ -15,7 +15,7 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
                 showtimeId: Number(showtimeId),
                 seatId: { in: seatIds },
                 status: "HOLD",
-                heldBy: userId,
+                heldBy: Number(userId),
                 holdUntil: { gt: now }
             }
         });
@@ -75,15 +75,46 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
     });
 };
 exports.getBookingById = async (id) => {
-    const booking = await prisma.booking.findUnique({
+    const bookings = await prisma.booking.findMany({
         where: { id: Number(id) },
-        include: {
-            showtime: true,
+        orderBy: { createdAt: "desc" },
+        select: {
+            id: true,
+            totalPrice: true,
+            status: true,
+            createdAt: true,
+            showtime: {
+                select: {
+                    startTime: true,
+                    endTime: true,
+                    movie: {
+                        select: {
+                            title: true,
+                            poster: true
+                        }
+                    },
+                    room: {
+                        select: {
+                            name: true,
+                            cinema: {
+                                select: {
+                                    name: true,
+                                    location: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             bookingSeats: {
-                include: {
+                select: {
                     showtimeSeat: {
-                        include: {
-                            seat: true
+                        select: {
+                            seat: {
+                                select: {
+                                    seatNumber: true
+                                }
+                            }
                         }
                     }
                 }
@@ -91,9 +122,28 @@ exports.getBookingById = async (id) => {
         }
     });
 
-    if (!booking) throw new Error("Not found");
 
-    return booking;
+    return bookings.map(b => ({
+        id: b.id,
+        totalPrice: Number(b.totalPrice),
+        status: b.status,
+        createdAt: b.createdAt,
+
+        movie: b.showtime.movie,
+
+        cinema: b.showtime.room.cinema,
+
+        room: {
+            name: b.showtime.room.name
+        },
+
+        showtime: {
+            startTime: b.showtime.startTime,
+            endTime: b.showtime.endTime
+        },
+
+        seats: b.bookingSeats.map(bs => bs.showtimeSeat.seat.seatNumber)
+    }));
 };
 exports.cancelBooking = async (id) => {
     return await prisma.$transaction(async (tx) => {
@@ -133,7 +183,7 @@ exports.cancelBooking = async (id) => {
         return true;
     });
 };
-exports.getBoookingsByUser = async (userId) => {
+exports.getBookingsByUser = async (userId) => {
     const bookings = await prisma.booking.findMany({
         where: { userId: Number(userId) },
         orderBy: { createdAt: "desc" },
@@ -144,14 +194,23 @@ exports.getBoookingsByUser = async (userId) => {
             createdAt: true,
             showtime: {
                 select: {
-                    id: true,
                     startTime: true,
                     endTime: true,
-                    price: true,
                     movie: {
                         select: {
                             title: true,
                             poster: true
+                        }
+                    },
+                    room: {
+                        select: {
+                            name: true,
+                            cinema: {
+                                select: {
+                                    name: true,
+                                    location: true
+                                }
+                            }
                         }
                     }
                 }
@@ -171,8 +230,27 @@ exports.getBoookingsByUser = async (userId) => {
             }
         }
     });
+
+
     return bookings.map(b => ({
-        ...b,
+        id: b.id,
+        totalPrice: Number(b.totalPrice),
+        status: b.status,
+        createdAt: b.createdAt,
+
+        movie: b.showtime.movie,
+
+        cinema: b.showtime.room.cinema,
+
+        room: {
+            name: b.showtime.room.name
+        },
+
+        showtime: {
+            startTime: b.showtime.startTime,
+            endTime: b.showtime.endTime
+        },
+
         seats: b.bookingSeats.map(bs => bs.showtimeSeat.seat.seatNumber)
     }));
 };
