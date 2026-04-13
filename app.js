@@ -25,7 +25,9 @@ app.use("/showtimes", showtimeRoute);
 app.use("/showtimeseats", showtimeseatRoute);
 app.use("/bookings", bookingRoute);
 
-
+app.get("/", (req, res) => {
+    res.send("Backend is running");
+});
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
