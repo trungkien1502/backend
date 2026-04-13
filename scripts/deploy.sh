@@ -8,6 +8,7 @@ BRANCH_NAME="${BRANCH_NAME:-main}"
 RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-false}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-}"
 SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
+FORCE_CLEAN_WORKTREE="${FORCE_CLEAN_WORKTREE:-true}"
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
@@ -30,9 +31,15 @@ if [ ! -f ".env" ]; then
 fi
 
 if [ -n "$(git status --porcelain)" ]; then
-  echo "Working tree is dirty on the server. Refusing to deploy."
-  git status --short
-  exit 1
+  if [ "$FORCE_CLEAN_WORKTREE" = "true" ]; then
+    echo "Cleaning dirty working tree before deploy..."
+    git reset --hard HEAD
+    git clean -fd -e .env -e .env.* -e backups/ -e uploads/
+  else
+    echo "Working tree is dirty on the server. Refusing to deploy."
+    git status --short
+    exit 1
+  fi
 fi
 
 if [ "$SKIP_GIT_SYNC" != "true" ]; then
