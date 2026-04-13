@@ -7,6 +7,7 @@ PM2_APP_NAME="${PM2_APP_NAME:?PM2_APP_NAME is required}"
 BRANCH_NAME="${BRANCH_NAME:-main}"
 RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-false}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-}"
+SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
@@ -34,9 +35,11 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-git fetch origin "$BRANCH_NAME"
-git checkout "$BRANCH_NAME"
-git pull --ff-only origin "$BRANCH_NAME"
+if [ "$SKIP_GIT_SYNC" != "true" ]; then
+  git fetch origin "$BRANCH_NAME"
+  git checkout "$BRANCH_NAME"
+  git pull --ff-only origin "$BRANCH_NAME"
+fi
 
 npm ci
 npx prisma generate

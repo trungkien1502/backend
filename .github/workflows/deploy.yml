@@ -32,5 +32,10 @@ jobs:
           envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,HEALTHCHECK_URL
           command_timeout: 30m
           script: |
+            set -e
+            cd "$APP_DIR"
+            git fetch origin "$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+            git pull --ff-only origin "$BRANCH_NAME"
             chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh
+            SKIP_GIT_SYNC=true ./scripts/deploy.sh
