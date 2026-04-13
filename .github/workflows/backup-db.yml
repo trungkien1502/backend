@@ -1,0 +1,36 @@
+name: Backup Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      retention_days:
+        description: Days to keep old backups on the server
+        required: false
+        default: "7"
+
+concurrency:
+  group: backup-production
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    environment: production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Backup database over SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_DIR: ${{ secrets.DEPLOY_PATH }}
+          BACKUP_DIR: ${{ vars.DB_BACKUP_DIR || '' }}
+          RETENTION_DAYS: ${{ github.event.inputs.retention_days || '7' }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          envs: APP_DIR,BACKUP_DIR,RETENTION_DAYS
+          command_timeout: 30m
+          script: |
+            chmod +x scripts/backup-db.sh
+            ./scripts/backup-db.sh
