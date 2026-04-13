@@ -7,7 +7,7 @@ app.use(express.json());
 
 const authRoute = require("./src/modules/auth/authRoute");
 
-const movieRoute = require("./src/modules/movie/movieRoute");
+const movieRoute = require("./src/modules/movie/movieroute");
 const roomRoute = require("./src/modules/room/roomRoute");
 const cinemaRoute = require("./src/modules/cinema/cinemaRoute");
 const seatRoute = require("./src/modules/seat/seatRoute");
