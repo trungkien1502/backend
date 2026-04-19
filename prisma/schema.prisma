@@ -66,8 +66,17 @@ model Movie {
   createdAt   DateTime  @default(now())
 
   showtimes   Showtime[]
+  cast        Cast[]
 }
+model Cast {
+  id        Int    @id @default(autoincrement())
+  name      String
+  character String?
+  profile   String?
 
+  movieId   Int
+  movie     Movie  @relation(fields: [movieId], references: [id])
+}
 model Cinema {
   id        Int      @id @default(autoincrement())
   name      String
