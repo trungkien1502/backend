@@ -66,14 +66,14 @@ exports.getShowtimes = async ({ movieId, cinemaId, date }) => { // get showtime 
 // };
 exports.createShowtime = async (data) => {
     return await prisma.$transaction(async (tx) => {
-        // 🔥 validate cơ bản
+        //  validate
         if (!data.startTime || !data.endTime) {
             throw new Error("Missing time");
         }
         if (new Date(data.startTime) >= new Date(data.endTime)) {
             throw new Error("Invalid time range");
         }
-        // 🔥 check trùng lịch phòng (CỰC QUAN TRỌNG)
+        //  check trùng lịch phòng 
         const conflict = await tx.showtime.findFirst({
             where: {
                 roomId: data.roomId,
@@ -101,7 +101,6 @@ exports.createShowtime = async (data) => {
             where: { roomId: data.roomId },
             select: { id: true }
         });
-        // 🔥 tránh crash nếu chưa có ghế
         if (seats.length === 0) {
             throw new Error("Room chưa có seat");
         }
@@ -130,11 +129,10 @@ exports.updateShowtime = async (id, data) => {
     });
 };
 
-
 exports.deleteShowtime = async (id) => {
     const showtimeId = Number(id);
 
-    // 1. check có booking không
+    //check có booking không
     const hasBooking = await prisma.booking.findFirst({
         where: { showtimeId }
     });
@@ -142,12 +140,12 @@ exports.deleteShowtime = async (id) => {
     if (hasBooking) {
         throw new Error("Không thể xoá showtime đã có người đặt vé");
     }
-    // 2. xoá showtimeSeat trước
+    // xoá showtimeSeat trước
     await prisma.showtimeSeat.deleteMany({
         where: { showtimeId }
     });
 
-    // 3. xoá showtime
+    //  xoá showtime
     return await prisma.showtime.delete({
         where: { id: showtimeId }
     });
