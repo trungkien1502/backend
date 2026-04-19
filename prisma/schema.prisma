@@ -52,7 +52,7 @@ model Movie {
   tmdbId      Int       @unique
 
   title       String
-  description String?
+  description String? @db.Text
   duration    Int?      // optional vì TMDB không luôn có
 
   poster      String?
