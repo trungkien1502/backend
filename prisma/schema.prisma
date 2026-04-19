@@ -46,17 +46,25 @@ enum MovieStatus {
   ENDED
 }
 
+
 model Movie {
   id          Int       @id @default(autoincrement())
+  tmdbId      Int       @unique
+
   title       String
   description String?
-  duration    Int
+  duration    Int?      // optional vì TMDB không luôn có
+
   poster      String?
+  backdrop    String?   // thêm cái này (ảnh nền)
+
   releaseDate DateTime?
+  rating      Float?
+
+  status      MovieStatus @default(COMING_SOON)
+
   createdAt   DateTime  @default(now())
 
-  status MovieStatus @default(COMING_SOON)
-  rating      Float? 
   showtimes   Showtime[]
 }
 
