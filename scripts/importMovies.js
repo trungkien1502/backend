@@ -23,7 +23,7 @@ async function fetchMovies(page = 1) {
 
 async function importMovies() {
     try {
-        for (let page = 1; page <= 3; page++) { // lấy 3 page cho nhẹ
+        for (let page = 1; page <= 7; page++) { // lấy 3 page cho nhẹ
             console.log("Đang lấy page:", page);
 
             const movies = await fetchMovies(page);
