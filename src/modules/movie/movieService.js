@@ -1,38 +1,48 @@
 const prisma = require("../../config/prisma");
-const bcrypt = require("bcrypt");
+
+
 
 exports.getAllMovies = async (query) => {
-    const { search } = query;
+    const { search, status } = query;
 
     return await prisma.movie.findMany({
-        where: search
-            ? {
+        where: {
+            ...(search && {
                 title: {
                     contains: search,
-                },
-            }
-            : {},
+                    mode: "insensitive"
+                }
+            }),
+            ...(status && {
+                status
+            })
+        },
         orderBy: { createdAt: "desc" },
     });
 };
+
 
 exports.getMovieById = async (id) => {
     const movie = await prisma.movie.findUnique({
         where: { id: parseInt(id) }
     });
 
-    if (!movie) {
-        throw new Error("Movie not found");
-    }
+    if (!movie) throw new Error("Movie not found");
+
     return movie;
 };
 
+
 exports.createMovie = async (data) => {
+
     const payload = {
         title: data.title,
         description: data.description,
-        duration: Number(data.duration),
-        poster: data.poster
+        duration: data.duration ? Number(data.duration) : null,
+        poster: data.poster,
+        backdrop: data.backdrop || null,
+        rating: data.rating ? Number(data.rating) : null,
+        tmdbId: data.tmdbId ? Number(data.tmdbId) : null
     };
 
     if (data.releaseDate) {
@@ -48,37 +58,48 @@ exports.createMovie = async (data) => {
     return await prisma.movie.create({ data: payload });
 };
 
+
+// 🔹 UPDATE MOVIE
 exports.updateMovie = async (id, data) => {
+
     const movie = await prisma.movie.findUnique({
         where: { id: parseInt(id) }
     });
 
-    if (!movie) {
-        throw new Error("Movie not found");
+    if (!movie) throw new Error("Movie not found");
+
+    const updateData = {
+        ...(data.title && { title: data.title }),
+        ...(data.description && { description: data.description }),
+        ...(data.rating && { rating: Number(data.rating) }),
+        ...(data.poster && { poster: data.poster }),
+        ...(data.backdrop && { backdrop: data.backdrop }),
+        ...(data.status && { status: data.status })
+    };
+
+    if (data.releaseDate) {
+        const date = new Date(data.releaseDate);
+        if (isNaN(date)) throw new Error("releaseDate không hợp lệ");
+        updateData.releaseDate = date;
     }
 
     return await prisma.movie.update({
         where: { id: parseInt(id) },
-        data: {
-            title: data.title,
-            description: data.description,
-            releaseDate: new Date(data.releaseDate),
-            rating: data.rating
-        }
+        data: updateData
     });
 };
 
+
+
 exports.deleteMovie = async (id) => {
+
     const movie = await prisma.movie.findUnique({
         where: { id: parseInt(id) }
     });
 
-    if (!movie) {
-        throw new Error("Movie not found");
-    }
+    if (!movie) throw new Error("Movie not found");
 
     return await prisma.movie.delete({
         where: { id: parseInt(id) }
     });
 };
-
