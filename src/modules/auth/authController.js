@@ -2,37 +2,33 @@ const authService = require("./authService");
 
 const Joi = require("joi");
 
-const registerEmailSchema = Joi.object({
-    email: Joi.string().email().required()
+const registerSchema = Joi.object({
+    email: Joi.string().email().required(),
+
+    password: Joi.string().min(6).required(),
+
+    name: Joi.string().min(2).required(),
+
+    phone: Joi.string()
+        .pattern(/^[0-9]{9,11}$/)
+        .required()
 });
-const registerPassSchema = Joi.object({
-    password: Joi.string().min(6).required()
-});
-// function isValidEmail(email) {
-//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//     return emailRegex.test(email);
-// }
 
 exports.register = async (req, res) => {
 
-    const { email, password } = req.body;
+    const { error, value } = registerSchema.validate(req.body, {
+        stripUnknown: true
+    });
 
-    const { error: emailError } = registerEmailSchema.validate({ email });
-    const { error: passError } = registerPassSchema.validate({ password });
-
-    if (emailError || passError) {
+    if (error) {
         return res.status(400).json({
-            message: emailError
-                ? emailError.details[0].message
-                : passError.details[0].message
+            message: error.details[0].message
         });
     }
 
     try {
-        const user = await authService.register({
-            email,
-            password
-        });
+
+        const user = await authService.register(value);
 
         res.status(201).json({
             message: "User created",

@@ -18,6 +18,7 @@ exports.register = async (data) => {
         data: {
             name: data.name,
             email: data.email,
+            phone: data.phone,
             password: hashedPassword
         }
     });
