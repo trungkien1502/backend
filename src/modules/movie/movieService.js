@@ -24,7 +24,10 @@ exports.getAllMovies = async (query) => {
 
 exports.getMovieById = async (id) => {
     const movie = await prisma.movie.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: parseInt(id) },
+        include: {
+            casts: true
+        }
     });
 
     if (!movie) throw new Error("Movie not found");
