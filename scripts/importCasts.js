@@ -32,12 +32,12 @@ async function importCast() {
         try {
             const castList = await fetchCast(movie.tmdbId);
 
-            // ❗ Xóa cast cũ nếu có (tránh trùng)
+
             await prisma.cast.deleteMany({
                 where: { movieId: movie.id }
             });
 
-            // 🔥 chỉ lấy top 5 diễn viên
+
             const topCast = castList.slice(0, 6);
 
             for (const actor of topCast) {
