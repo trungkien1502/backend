@@ -6,6 +6,8 @@ APP_DIR="${APP_DIR:?APP_DIR is required}"
 PM2_APP_NAME="${PM2_APP_NAME:?PM2_APP_NAME is required}"
 BRANCH_NAME="${BRANCH_NAME:-main}"
 RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-false}"
+BACKUP_DIR="${BACKUP_DIR:-$APP_DIR/backups}"
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-}"
 SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 FORCE_CLEAN_WORKTREE="${FORCE_CLEAN_WORKTREE:-true}"
@@ -52,6 +54,9 @@ npm ci
 npx prisma generate
 
 if [ "$RUN_DB_MIGRATIONS" = "true" ] && [ -d "prisma/migrations" ]; then
+  chmod +x scripts/backup-db.sh
+  BACKUP_DIR="$BACKUP_DIR" RETENTION_DAYS="$RETENTION_DAYS" ./scripts/backup-db.sh
+  node scripts/guard-safe-migrations.js
   npx prisma migrate deploy
 fi
 

@@ -22,14 +22,16 @@ jobs:
           APP_DIR: ${{ secrets.DEPLOY_PATH }}
           PM2_APP_NAME: ${{ secrets.PM2_APP_NAME }}
           BRANCH_NAME: main
-          RUN_DB_MIGRATIONS: ${{ vars.RUN_DB_MIGRATIONS || 'false' }}
+          RUN_DB_MIGRATIONS: ${{ vars.RUN_DB_MIGRATIONS || 'true' }}
+          BACKUP_DIR: ${{ vars.DB_BACKUP_DIR || '' }}
+          RETENTION_DAYS: ${{ vars.DB_BACKUP_RETENTION_DAYS || '7' }}
           HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || '' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,HEALTHCHECK_URL
+          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,BACKUP_DIR,RETENTION_DAYS,HEALTHCHECK_URL
           command_timeout: 30m
           script: |
             set -e
