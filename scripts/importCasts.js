@@ -7,7 +7,7 @@ const API_KEY = "4681c9043d9e01626e5a1833b32be16e";
 const BASE_IMAGE = "https://image.tmdb.org/t/p/w500";
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchCast(tmdbId) {
@@ -26,17 +26,20 @@ async function fetchCast(tmdbId) {
 async function importCast() {
     const movies = await prisma.movie.findMany();
 
-    console.log("Số phim:", movies.length);
+    console.log("So phim:", movies.length);
 
     for (const movie of movies) {
+        if (!movie.tmdbId) {
+            console.log("Skip movie thieu tmdbId:", movie.title);
+            continue;
+        }
+
         try {
             const castList = await fetchCast(movie.tmdbId);
-
 
             await prisma.cast.deleteMany({
                 where: { movieId: movie.id }
             });
-
 
             const topCast = castList.slice(0, 6);
 
@@ -45,24 +48,20 @@ async function importCast() {
                     data: {
                         name: actor.name,
                         character: actor.character,
-                        profile: actor.profile_path
-                            ? BASE_IMAGE + actor.profile_path
-                            : null,
+                        profile: actor.profile_path ? BASE_IMAGE + actor.profile_path : null,
                         movieId: movie.id
                     }
                 });
             }
 
-            console.log("✔ Done:", movie.title);
-
-            await sleep(250); // ❗ tránh rate limit
-
+            console.log("Done:", movie.title);
+            await sleep(250);
         } catch (err) {
-            console.log("❌ Lỗi:", movie.title);
+            console.log("Loi:", movie.title);
         }
     }
 
-    console.log("✅ Import cast xong");
+    console.log("Import cast xong");
 }
 
 importCast();
