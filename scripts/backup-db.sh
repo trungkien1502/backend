@@ -43,6 +43,7 @@ MYSQL_PWD="$DB_PASSWORD" mysqldump \
   --host="$DB_HOST" \
   --port="$DB_PORT" \
   --user="$DB_USER" \
+  --no-tablespaces \
   --single-transaction \
   --quick \
   --lock-tables=false \

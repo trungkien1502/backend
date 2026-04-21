@@ -57,7 +57,20 @@ if [ "$RUN_DB_MIGRATIONS" = "true" ] && [ -d "prisma/migrations" ]; then
   chmod +x scripts/backup-db.sh
   BACKUP_DIR="$BACKUP_DIR" RETENTION_DAYS="$RETENTION_DAYS" ./scripts/backup-db.sh
   node scripts/guard-safe-migrations.js
-  npx prisma migrate deploy
+  MIGRATE_OUTPUT_FILE="$(mktemp)"
+  if ! npx prisma migrate deploy >"$MIGRATE_OUTPUT_FILE" 2>&1; then
+    cat "$MIGRATE_OUTPUT_FILE"
+    if grep -q "P3005" "$MIGRATE_OUTPUT_FILE"; then
+      echo "Detected Prisma P3005 on existing production schema. Falling back to non-destructive schema sync."
+      npx prisma db push --skip-generate
+    else
+      rm -f "$MIGRATE_OUTPUT_FILE"
+      exit 1
+    fi
+  else
+    cat "$MIGRATE_OUTPUT_FILE"
+  fi
+  rm -f "$MIGRATE_OUTPUT_FILE"
 fi
 
 if [ -f "ecosystem.config.js" ]; then
