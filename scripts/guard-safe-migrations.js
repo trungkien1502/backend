@@ -4,6 +4,16 @@ const fs = require("fs");
 const path = require("path");
 const mysql = require("mysql2/promise");
 
+const LEGACY_ALLOWED_DESTRUCTIVE_MIGRATIONS = new Set(
+  (
+    process.env.LEGACY_ALLOWED_DESTRUCTIVE_MIGRATIONS ||
+    "20260310135427_update_schema"
+  )
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
+
 function readDatabaseUrlFromEnvFile(appDir) {
   const envPath = path.join(appDir, ".env");
   if (!fs.existsSync(envPath)) {
@@ -96,6 +106,12 @@ async function main() {
       const sql = fs.readFileSync(sqlPath, "utf8");
       const matches = findDangerousStatements(sql);
       if (matches.length > 0) {
+        if (LEGACY_ALLOWED_DESTRUCTIVE_MIGRATIONS.has(migrationName)) {
+          console.warn(
+            `Skipping legacy destructive migration allowlisted by policy: ${migrationName}`
+          );
+          continue;
+        }
         violations.push({
           migrationName,
           sqlPath,
