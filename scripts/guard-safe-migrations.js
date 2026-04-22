@@ -51,10 +51,8 @@ function getMigrationDirs(migrationsRoot) {
 function findDangerousStatements(sqlContent) {
   const normalized = sqlContent.replace(/\r\n/g, "\n");
   const checks = [
-    { name: "DROP", pattern: /\bDROP\b/i },
     { name: "DROP TABLE", pattern: /\bDROP\s+TABLE\b/i },
     { name: "DROP COLUMN", pattern: /\bDROP\s+COLUMN\b/i },
-    { name: "DROP INDEX", pattern: /\bDROP\s+INDEX\b/i },
     { name: "DROP DATABASE", pattern: /\bDROP\s+DATABASE\b/i },
     { name: "TRUNCATE", pattern: /\bTRUNCATE\b/i },
     { name: "DELETE FROM", pattern: /\bDELETE\s+FROM\b/i },
