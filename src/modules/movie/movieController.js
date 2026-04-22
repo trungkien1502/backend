@@ -12,12 +12,9 @@ exports.getAllMovies = async (req, res) => {
 exports.getMovieById = async (req, res) => {
     try {
         const movie = await movieService.getMovieById(req.params.id);
-        if (!movie) {
-            return res.status(404).json({ message: "Movie not found" });
-        }
         res.json(movie);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
 
@@ -33,24 +30,17 @@ exports.createMovie = async (req, res) => {
 exports.updateMovie = async (req, res) => {
     try {
         const movie = await movieService.updateMovie(req.params.id, req.body);
-        if (!movie) {
-            return res.status(404).json({ message: "Movie not found" });
-        }
         res.json(movie);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(error.statusCode || 400).json({ message: error.message });
     }
 };
 
 exports.deleteMovie = async (req, res) => {
     try {
-        const movie = await movieService.deleteMovie(req.params.id);
-        if (!movie) {
-            return res.status(404).json({ message: "Movie not found" });
-        }
+        await movieService.deleteMovie(req.params.id);
         res.json({ message: "Movie deleted" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
-
