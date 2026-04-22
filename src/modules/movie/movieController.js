@@ -45,9 +45,9 @@ exports.deleteMovie = async (req, res) => {
     }
 };
 
-exports.getMovieComming = async (req, res) => {
+exports.getMovieComingSoon = async (req, res) => {
     try {
-        const movies = await movieService.getMovieComming();
+        const movies = await movieService.getMovieComingSoon();
         res.json(movies);
     } catch (error) {
         res.status(500).json({ message: error.message });
