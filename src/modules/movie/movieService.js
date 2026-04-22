@@ -1,17 +1,5 @@
 const prisma = require("../../config/prisma");
 
-const parseMovieId = (id) => {
-    const movieId = Number.parseInt(id, 10);
-    if (Number.isNaN(movieId)) {
-        const error = new Error("Invalid movie id");
-        error.statusCode = 400;
-        throw error;
-    }
-
-    return movieId;
-};
-
-
 exports.getAllMovies = async (query) => {
     const { search, status } = query;
 
@@ -30,24 +18,34 @@ exports.getAllMovies = async (query) => {
         orderBy: { createdAt: "desc" },
     });
 };
+exports.getMovieNowShowing = async () => {
+    return await prisma.movie.findMany({
+        where: {
+            status: "NOW_SHOWING"
+        },
+        orderBy: { createdAt: "desc" }
+    });
+};
 
+exports.getMovieComingSoon = async () => {
+    return await prisma.movie.findMany({
+        where: {
+            status: "COMING_SOON"
+        },
+        orderBy: { createdAt: "desc" }
+    });
+};
 
 exports.getMovieById = async (id) => {
-    const movieId = parseMovieId(id);
-
     const movie = await prisma.movie.findUnique({
-        where: { id: movieId },
+        where: { id: parseInt(id) },
         include: {
             cast: true,
             showtimes: true
         }
     });
 
-    if (!movie) {
-        const error = new Error("Movie not found");
-        error.statusCode = 404;
-        throw error;
-    }
+    if (!movie) throw new Error("Movie not found");
 
     return movie;
 };
@@ -81,17 +79,12 @@ exports.createMovie = async (data) => {
 
 // 🔹 UPDATE MOVIE
 exports.updateMovie = async (id, data) => {
-    const movieId = parseMovieId(id);
 
     const movie = await prisma.movie.findUnique({
-        where: { id: movieId }
+        where: { id: parseInt(id) }
     });
 
-    if (!movie) {
-        const error = new Error("Movie not found");
-        error.statusCode = 404;
-        throw error;
-    }
+    if (!movie) throw new Error("Movie not found");
 
     const updateData = {
         ...(data.title && { title: data.title }),
@@ -109,7 +102,7 @@ exports.updateMovie = async (id, data) => {
     }
 
     return await prisma.movie.update({
-        where: { id: movieId },
+        where: { id: parseInt(id) },
         data: updateData
     });
 };
@@ -117,19 +110,14 @@ exports.updateMovie = async (id, data) => {
 
 
 exports.deleteMovie = async (id) => {
-    const movieId = parseMovieId(id);
 
     const movie = await prisma.movie.findUnique({
-        where: { id: movieId }
+        where: { id: parseInt(id) }
     });
 
-    if (!movie) {
-        const error = new Error("Movie not found");
-        error.statusCode = 404;
-        throw error;
-    }
+    if (!movie) throw new Error("Movie not found");
 
     return await prisma.movie.delete({
-        where: { id: movieId }
+        where: { id: parseInt(id) }
     });
 };

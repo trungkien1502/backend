@@ -44,3 +44,21 @@ exports.deleteMovie = async (req, res) => {
         res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
+
+exports.getMovieComming = async (req, res) => {
+    try {
+        const movies = await movieService.getMovieComming();
+        res.json(movies);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getMovieNowShowing = async (req, res) => {   
+    try {
+        const movies = await movieService.getMovieNowShowing();
+        res.json(movies);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+ 
