@@ -53,7 +53,7 @@ exports.getMovieComming = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-exports.getMovieNowShowing = async (req, res) => {   
+exports.getMovieNowShowing = async (req, res) => {
     try {
         const movies = await movieService.getMovieNowShowing();
         res.json(movies);
@@ -61,4 +61,3 @@ exports.getMovieNowShowing = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
- 

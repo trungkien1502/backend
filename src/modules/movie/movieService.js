@@ -19,18 +19,22 @@ exports.getAllMovies = async (query) => {
     });
 };
 exports.getMovieNowShowing = async () => {
+
     return await prisma.movie.findMany({
         where: {
-            status: "NOW_SHOWING"
+            status: "NOW_SHOWING",
         },
         orderBy: { createdAt: "desc" }
     });
 };
 
 exports.getMovieComingSoon = async () => {
+
     return await prisma.movie.findMany({
         where: {
-            status: "COMING_SOON"
+            status: "COMING_SOON",
+
+
         },
         orderBy: { createdAt: "desc" }
     });
