@@ -33,8 +33,6 @@ exports.getMovieComingSoon = async () => {
     return await prisma.movie.findMany({
         where: {
             status: "COMING_SOON",
-
-
         },
         orderBy: { createdAt: "desc" }
     });
