@@ -70,6 +70,7 @@ async function upsertMovie(detail) {
   });
 }
 
+
 async function syncGenres(movieId, genres) {
   await prisma.movieGenre.deleteMany({
     where: { movieId },
@@ -151,9 +152,6 @@ async function syncPeople(movieId, credits) {
 }
 
 async function importTmdbData() {
-  let successCount = 0;
-  let errorCount = 0;
-
   try {
     for (let page = 1; page <= IMPORT_PAGES; page += 1) {
       console.log(`Dang lay danh sach phim trang ${page}...`);
@@ -167,16 +165,14 @@ async function importTmdbData() {
           await syncPeople(movie.id, detail.credits);
 
           console.log(`Done: ${movie.title}`);
-          successCount += 1;
           await sleep(250);
         } catch (error) {
           console.log(`Loi import phim ${movieSummary.id}: ${error.message}`);
-          errorCount += 1;
         }
       }
     }
 
-    console.log(`Import xong. Thanh cong: ${successCount}, Loi: ${errorCount}`);
+    console.log("Import TMDB thanh cong.");
   } catch (error) {
     console.error("Import TMDB that bai:", error.message);
   } finally {
