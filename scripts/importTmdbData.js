@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 const API_KEY = process.env.TMDB_API_KEY || "4681c9043d9e01626e5a1833b32be16e";
 const BASE_IMAGE = "https://image.tmdb.org/t/p/w500";
 const LANGUAGE = process.env.TMDB_LANGUAGE || "vi-VN";
-const IMPORT_PAGES = Number(process.env.TMDB_IMPORT_PAGES || 5);
-const CAST_LIMIT = Number(process.env.TMDB_CAST_LIMIT || 8);
+const IMPORT_PAGES = Number(process.env.TMDB_IMPORT_PAGES || 7);
+const CAST_LIMIT = Number(process.env.TMDB_CAST_LIMIT || 10);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -42,29 +42,31 @@ async function fetchMovieDetail(tmdbId) {
 }
 
 async function upsertMovie(detail) {
-  return prisma.movie.upsert({
+  const payload = {
+    tmdbId: detail.id,
+    title: detail.title,
+    description: detail.overview,
+    duration: detail.runtime ?? null,
+    poster: buildImageUrl(detail.poster_path),
+    backdrop: buildImageUrl(detail.backdrop_path),
+    releaseDate: detail.release_date ? new Date(detail.release_date) : null,
+    rating: detail.vote_average ?? null,
+    status: MovieStatus.NOW_SHOWING,
+  };
+
+  const existingMovie = await prisma.movie.findFirst({
     where: { tmdbId: detail.id },
-    update: {
-      title: detail.title,
-      description: detail.overview,
-      duration: detail.runtime ?? null,
-      poster: buildImageUrl(detail.poster_path),
-      backdrop: buildImageUrl(detail.backdrop_path),
-      releaseDate: detail.release_date ? new Date(detail.release_date) : null,
-      rating: detail.vote_average ?? null,
-      status: MovieStatus.NOW_SHOWING,
-    },
-    create: {
-      tmdbId: detail.id,
-      title: detail.title,
-      description: detail.overview,
-      duration: detail.runtime ?? null,
-      poster: buildImageUrl(detail.poster_path),
-      backdrop: buildImageUrl(detail.backdrop_path),
-      releaseDate: detail.release_date ? new Date(detail.release_date) : null,
-      rating: detail.vote_average ?? null,
-      status: MovieStatus.NOW_SHOWING,
-    },
+  });
+
+  if (existingMovie) {
+    return prisma.movie.update({
+      where: { id: existingMovie.id },
+      data: payload,
+    });
+  }
+
+  return prisma.movie.create({
+    data: payload,
   });
 }
 
@@ -149,6 +151,9 @@ async function syncPeople(movieId, credits) {
 }
 
 async function importTmdbData() {
+  let successCount = 0;
+  let errorCount = 0;
+
   try {
     for (let page = 1; page <= IMPORT_PAGES; page += 1) {
       console.log(`Dang lay danh sach phim trang ${page}...`);
@@ -162,14 +167,16 @@ async function importTmdbData() {
           await syncPeople(movie.id, detail.credits);
 
           console.log(`Done: ${movie.title}`);
+          successCount += 1;
           await sleep(250);
         } catch (error) {
           console.log(`Loi import phim ${movieSummary.id}: ${error.message}`);
+          errorCount += 1;
         }
       }
     }
 
-    console.log("Import TMDB thanh cong.");
+    console.log(`Import xong. Thanh cong: ${successCount}, Loi: ${errorCount}`);
   } catch (error) {
     console.error("Import TMDB that bai:", error.message);
   } finally {
