@@ -1,41 +1,34 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  
 }
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id       Int     @id @default(autoincrement())
-  name     String
-  email    String  @unique
-  password String
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
   phone     String?
   gender    String?
   birthDate DateTime?
   createdAt DateTime @default(now())
 
-  bookings Booking[]
+  bookings      Booking[]
   PasswordReset PasswordReset[]
-
 }
+
 model PasswordReset {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
-  user      User      @relation(fields: [userId], references: [id])
-  codeHash  String    // bcrypt hash của mã 6 số
-  expireAt DateTime
+  user      User     @relation(fields: [userId], references: [id])
+  codeHash  String
+  expireAt  DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
@@ -46,44 +39,83 @@ enum MovieStatus {
   ENDED
 }
 
-
 model Movie {
-  id          Int       @id @default(autoincrement())
-  tmdbId      Int?  
-
+  id          Int      @id @default(autoincrement())
+  tmdbId      Int?
   title       String
-  description String? @db.Text
-  duration    Int?      // optional vì TMDB không luôn có
-
+  description String?  @db.Text
+  duration    Int?
   poster      String?
-  backdrop    String?   // thêm cái này (ảnh nền)
-
+  backdrop    String?
   releaseDate DateTime?
   rating      Float?
-
   status      MovieStatus @default(COMING_SOON)
+  createdAt   DateTime @default(now())
 
-  createdAt   DateTime  @default(now())
+  showtimes Showtime[]
 
-  showtimes   Showtime[]
-  cast        Cast[]
+  // New relations
+  people   MoviePerson[]
+  genres   MovieGenre[]
 }
-model Cast {
-  id        Int    @id @default(autoincrement())
-  name      String
-  character String?
-  profile   String?
 
+enum MoviePersonRole {
+  CAST
+  DIRECTOR
+}
+
+model Person {
+  id           Int      @id @default(autoincrement())
+  tmdbPersonId Int?     @unique
+  name         String
+  profile      String?
+
+  movies MoviePerson[]
+}
+
+model MoviePerson {
+  id        Int              @id @default(autoincrement())
   movieId   Int
-  movie     Movie  @relation(fields: [movieId], references: [id])
+  personId  Int
+  role      MoviePersonRole
+  character String?
+  job       String?
+
+  movie  Movie  @relation(fields: [movieId], references: [id])
+  person Person @relation(fields: [personId], references: [id])
+
+  @@index([movieId])
+  @@index([personId])
 }
+
+model Genre {
+  id          Int      @id @default(autoincrement())
+  tmdbGenreId Int?     @unique
+  name        String
+
+  movies MovieGenre[]
+}
+
+model MovieGenre {
+  movieId Int
+  genreId Int
+
+  movie Movie @relation(fields: [movieId], references: [id])
+  genre Genre @relation(fields: [genreId], references: [id])
+
+  @@id([movieId, genreId])
+}
+
 model Cinema {
   id        Int      @id @default(autoincrement())
   name      String
   location  String?
+  poster    String?
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
   createdAt DateTime @default(now())
 
-  rooms     Room[]
+  rooms Room[]
 }
 
 model Room {
@@ -92,9 +124,9 @@ model Room {
   name       String
   totalSeats Int
 
-  cinema     Cinema @relation(fields: [cinemaId], references: [id])
-  seats      Seat[]
-  showtimes  Showtime[]
+  cinema    Cinema    @relation(fields: [cinemaId], references: [id])
+  seats     Seat[]
+  showtimes Showtime[]
 }
 
 model Seat {
@@ -102,8 +134,8 @@ model Seat {
   roomId     Int
   seatNumber String
 
-  room           Room           @relation(fields: [roomId], references: [id])
-  showtimeSeats  ShowtimeSeat[]
+  room          Room           @relation(fields: [roomId], references: [id])
+  showtimeSeats ShowtimeSeat[]
 }
 
 model Showtime {
@@ -119,21 +151,23 @@ model Showtime {
   bookings     Booking[]
   showtimeSeats ShowtimeSeat[]
 }
+
 enum SeatStatus {
   AVAILABLE
   HOLD
   BOOKED
 }
+
 model ShowtimeSeat {
-  id         Int    @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   showtimeId Int
   seatId     Int
-  status     SeatStatus 
-  holdUntil  DateTime?   
-  showtime   Showtime @relation(fields: [showtimeId], references: [id])
-  seat       Seat     @relation(fields: [seatId], references: [id])
-  heldBy     Int?        
+  status     SeatStatus
+  holdUntil  DateTime?
+  heldBy     Int?
 
+  showtime Showtime @relation(fields: [showtimeId], references: [id])
+  seat     Seat     @relation(fields: [seatId], references: [id])
 
   bookingSeats BookingSeat[]
 
@@ -145,6 +179,7 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
 }
+
 model Booking {
   id         Int      @id @default(autoincrement())
   userId     Int
@@ -153,8 +188,9 @@ model Booking {
   status     BookingStatus
   createdAt  DateTime @default(now())
 
-  user        User          @relation(fields: [userId], references: [id])
-  showtime    Showtime      @relation(fields: [showtimeId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  showtime Showtime @relation(fields: [showtimeId], references: [id])
+
   bookingSeats BookingSeat[]
 }
 
@@ -163,6 +199,6 @@ model BookingSeat {
   bookingId      Int
   showtimeSeatId Int
 
-  booking        Booking      @relation(fields: [bookingId], references: [id])
-  showtimeSeat   ShowtimeSeat @relation(fields: [showtimeSeatId], references: [id])
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  showtimeSeat ShowtimeSeat @relation(fields: [showtimeSeatId], references: [id])
 }
