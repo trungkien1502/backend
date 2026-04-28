@@ -1,6 +1,6 @@
 const prisma = require("../../config/prisma");
 
-const movieRelationsInclude = {
+const movieDetailRelationsInclude = {
     people: {
         include: {
             person: true
@@ -12,6 +12,23 @@ const movieRelationsInclude = {
         }
     }
 };
+
+const movieListInclude = {
+    genres: {
+        include: {
+            genre: true
+        }
+    }
+};
+
+const movieDetailInclude = {
+    ...movieDetailRelationsInclude
+};
+
+const formatMovieListItem = (movie) => ({
+    ...movie,
+    genres: movie.genres.map((movieGenre) => movieGenre.genre.name)
+});
 
 const parseMovieId = (id) => {
     const movieId = Number(id);
@@ -28,7 +45,7 @@ const parseMovieId = (id) => {
 exports.getAllMovies = async (query) => {
     const { search, status } = query;
 
-    return await prisma.movie.findMany({
+    const movies = await prisma.movie.findMany({
         where: {
             ...(search && {
                 title: {
@@ -40,32 +57,38 @@ exports.getAllMovies = async (query) => {
                 status
             })
         },
-        include: movieRelationsInclude,
+        include: movieListInclude,
         orderBy: { createdAt: "desc" },
     });
+
+    return movies.map(formatMovieListItem);
 };
 exports.getMovieNowShowing = async () => {
 
-    return await prisma.movie.findMany({
+    const movies = await prisma.movie.findMany({
         where: {
             status: "NOW_SHOWING",
         },
-        include: movieRelationsInclude,
+        include: movieListInclude,
         orderBy: { createdAt: "desc" }
     });
+
+    return movies.map(formatMovieListItem);
 };
 
 exports.getMovieComingSoon = async () => {
 
-    return await prisma.movie.findMany({
+    const movies = await prisma.movie.findMany({
         where: {
             status: "COMING_SOON",
 
 
         },
-        include: movieRelationsInclude,
+        include: movieListInclude,
         orderBy: { createdAt: "desc" }
     });
+
+    return movies.map(formatMovieListItem);
 };
 
 exports.getMovieById = async (id) => {
@@ -74,7 +97,7 @@ exports.getMovieById = async (id) => {
     const movie = await prisma.movie.findUnique({
         where: { id: movieId },
         include: {
-            ...movieRelationsInclude,
+            ...movieDetailInclude,
             showtimes: true
         }
     });
