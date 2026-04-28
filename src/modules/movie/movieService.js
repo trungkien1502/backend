@@ -1,5 +1,30 @@
 const prisma = require("../../config/prisma");
 
+const movieRelationsInclude = {
+    people: {
+        include: {
+            person: true
+        }
+    },
+    genres: {
+        include: {
+            genre: true
+        }
+    }
+};
+
+const parseMovieId = (id) => {
+    const movieId = Number(id);
+
+    if (!Number.isInteger(movieId)) {
+        const error = new Error("Invalid movie id");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return movieId;
+};
+
 exports.getAllMovies = async (query) => {
     const { search, status } = query;
 
@@ -15,6 +40,7 @@ exports.getAllMovies = async (query) => {
                 status
             })
         },
+        include: movieRelationsInclude,
         orderBy: { createdAt: "desc" },
     });
 };
@@ -24,6 +50,7 @@ exports.getMovieNowShowing = async () => {
         where: {
             status: "NOW_SHOWING",
         },
+        include: movieRelationsInclude,
         orderBy: { createdAt: "desc" }
     });
 };
@@ -36,20 +63,27 @@ exports.getMovieComingSoon = async () => {
 
 
         },
+        include: movieRelationsInclude,
         orderBy: { createdAt: "desc" }
     });
 };
 
 exports.getMovieById = async (id) => {
+    const movieId = parseMovieId(id);
+
     const movie = await prisma.movie.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: movieId },
         include: {
-            cast: true,
+            ...movieRelationsInclude,
             showtimes: true
         }
     });
 
-    if (!movie) throw new Error("Movie not found");
+    if (!movie) {
+        const error = new Error("Movie not found");
+        error.statusCode = 404;
+        throw error;
+    }
 
     return movie;
 };
@@ -83,12 +117,17 @@ exports.createMovie = async (data) => {
 
 // 🔹 UPDATE MOVIE
 exports.updateMovie = async (id, data) => {
+    const movieId = parseMovieId(id);
 
     const movie = await prisma.movie.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: movieId }
     });
 
-    if (!movie) throw new Error("Movie not found");
+    if (!movie) {
+        const error = new Error("Movie not found");
+        error.statusCode = 404;
+        throw error;
+    }
 
     const updateData = {
         ...(data.title && { title: data.title }),
@@ -106,7 +145,7 @@ exports.updateMovie = async (id, data) => {
     }
 
     return await prisma.movie.update({
-        where: { id: parseInt(id) },
+        where: { id: movieId },
         data: updateData
     });
 };
@@ -114,14 +153,19 @@ exports.updateMovie = async (id, data) => {
 
 
 exports.deleteMovie = async (id) => {
+    const movieId = parseMovieId(id);
 
     const movie = await prisma.movie.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: movieId }
     });
 
-    if (!movie) throw new Error("Movie not found");
+    if (!movie) {
+        const error = new Error("Movie not found");
+        error.statusCode = 404;
+        throw error;
+    }
 
     return await prisma.movie.delete({
-        where: { id: parseInt(id) }
+        where: { id: movieId }
     });
 };

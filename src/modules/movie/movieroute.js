@@ -4,9 +4,9 @@ const router = express.Router();
 const movieController = require("./movieController");
 
 router.get("/", movieController.getAllMovies);
-router.get("/:id", movieController.getMovieById);
 router.get("/now_showing", movieController.getMovieNowShowing);
 router.get("/coming_soon", movieController.getMovieComingSoon);
+router.get("/:id", movieController.getMovieById);
 router.post("/", movieController.createMovie);
 router.put("/:id", movieController.updateMovie);
 router.delete("/:id", movieController.deleteMovie);

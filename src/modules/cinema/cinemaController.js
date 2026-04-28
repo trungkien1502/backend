@@ -17,6 +17,9 @@ exports.getCinemaById = async (req, res) => {
         }
         res.json(cinema);
     } catch (error) {
+        if (error.message === "Invalid cinema id") {
+            return res.status(400).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -38,6 +41,9 @@ exports.updateCinema = async (req, res) => {
         }
         res.json(cinema);
     } catch (error) {
+        if (error.message === "Invalid cinema id") {
+            return res.status(400).json({ message: error.message });
+        }
         res.status(400).json({ message: error.message });
     }
 };
@@ -50,6 +56,9 @@ exports.deleteCinema = async (req, res) => {
         }
         res.json({ message: "Cinema deleted" });
     } catch (error) {
+        if (error.message === "Invalid cinema id") {
+            return res.status(400).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };

@@ -1,5 +1,14 @@
 const prisma = require("../../config/prisma");
-const bcrypt = require("bcrypt");
+
+const toCinemaId = (id) => {
+    const cinemaId = Number(id);
+
+    if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+        throw new Error("Invalid cinema id");
+    }
+
+    return cinemaId;
+};
 
 const getAllCinemas = async () => {
     return await prisma.cinema.findMany();
@@ -7,7 +16,7 @@ const getAllCinemas = async () => {
 
 const getCinemaById = async (id) => {
     return await prisma.cinema.findUnique({
-        where: { id: Number(id) }
+        where: { id: toCinemaId(id) }
     });
 };
 
@@ -19,14 +28,14 @@ const createCinema = async (cinemaData) => {
 
 const updateCinema = async (id, cinemaData) => {
     return await prisma.cinema.update({
-        where: { id: Number(id) },
+        where: { id: toCinemaId(id) },
         data: cinemaData
     });
 };
 
 const deleteCinema = async (id) => {
     return await prisma.cinema.delete({
-        where: { id: Number(id) }
+        where: { id: toCinemaId(id) }
     });
 };
 
