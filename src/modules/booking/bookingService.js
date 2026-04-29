@@ -1,5 +1,77 @@
 const prisma = require("../../config/prisma");
 
+const bookingSelect = {
+    id: true,
+    totalPrice: true,
+    status: true,
+    createdAt: true,
+    user: {
+        select: {
+            id: true,
+            name: true,
+            email: true
+        }
+    },
+    showtime: {
+        select: {
+            startTime: true,
+            endTime: true,
+            movie: {
+                select: {
+                    id: true,
+                    title: true,
+                    poster: true
+                }
+            },
+            room: {
+                select: {
+                    id: true,
+                    name: true,
+                    cinema: {
+                        select: {
+                            id: true,
+                            name: true,
+                            location: true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    bookingSeats: {
+        select: {
+            showtimeSeat: {
+                select: {
+                    seat: {
+                        select: {
+                            seatNumber: true
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+const mapBooking = (booking) => ({
+    id: booking.id,
+    totalPrice: Number(booking.totalPrice),
+    status: booking.status,
+    createdAt: booking.createdAt,
+    user: booking.user || null,
+    movie: booking.showtime.movie,
+    cinema: booking.showtime.room.cinema,
+    room: {
+        id: booking.showtime.room.id,
+        name: booking.showtime.room.name
+    },
+    showtime: {
+        startTime: booking.showtime.startTime,
+        endTime: booking.showtime.endTime
+    },
+    seats: booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeat.seat.seatNumber)
+});
+
 exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
     return await prisma.$transaction(async (tx) => {
 
@@ -74,76 +146,60 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
         return booking;
     });
 };
+
+exports.getAllBookings = async ({ status, search } = {}) => {
+    const bookings = await prisma.booking.findMany({
+        where: {
+            ...(status && {
+                status
+            }),
+            ...(search && {
+                OR: [
+                    {
+                        user: {
+                            name: {
+                                contains: search,
+                                mode: "insensitive"
+                            }
+                        }
+                    },
+                    {
+                        user: {
+                            email: {
+                                contains: search,
+                                mode: "insensitive"
+                            }
+                        }
+                    },
+                    {
+                        showtime: {
+                            movie: {
+                                title: {
+                                    contains: search,
+                                    mode: "insensitive"
+                                }
+                            }
+                        }
+                    }
+                ]
+            })
+        },
+        orderBy: { createdAt: "desc" },
+        select: bookingSelect
+    });
+
+    return bookings.map(mapBooking);
+};
+
 exports.getBookingById = async (id) => {
     const bookings = await prisma.booking.findMany({
         where: { id: Number(id) },
         orderBy: { createdAt: "desc" },
-        select: {
-            id: true,
-            totalPrice: true,
-            status: true,
-            createdAt: true,
-            showtime: {
-                select: {
-                    startTime: true,
-                    endTime: true,
-                    movie: {
-                        select: {
-                            title: true,
-                            poster: true
-                        }
-                    },
-                    room: {
-                        select: {
-                            name: true,
-                            cinema: {
-                                select: {
-                                    name: true,
-                                    location: true
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            bookingSeats: {
-                select: {
-                    showtimeSeat: {
-                        select: {
-                            seat: {
-                                select: {
-                                    seatNumber: true
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        select: bookingSelect
     });
 
 
-    return bookings.map(b => ({
-        id: b.id,
-        totalPrice: Number(b.totalPrice),
-        status: b.status,
-        createdAt: b.createdAt,
-
-        movie: b.showtime.movie,
-
-        cinema: b.showtime.room.cinema,
-
-        room: {
-            name: b.showtime.room.name
-        },
-
-        showtime: {
-            startTime: b.showtime.startTime,
-            endTime: b.showtime.endTime
-        },
-
-        seats: b.bookingSeats.map(bs => bs.showtimeSeat.seat.seatNumber)
-    }));
+    return bookings.map(mapBooking);
 };
 exports.cancelBooking = async (id) => {
     return await prisma.$transaction(async (tx) => {
@@ -187,70 +243,9 @@ exports.getBookingsByUser = async (userId) => {
     const bookings = await prisma.booking.findMany({
         where: { userId: Number(userId) },
         orderBy: { createdAt: "desc" },
-        select: {
-            id: true,
-            totalPrice: true,
-            status: true,
-            createdAt: true,
-            showtime: {
-                select: {
-                    startTime: true,
-                    endTime: true,
-                    movie: {
-                        select: {
-                            title: true,
-                            poster: true
-                        }
-                    },
-                    room: {
-                        select: {
-                            name: true,
-                            cinema: {
-                                select: {
-                                    name: true,
-                                    location: true
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            bookingSeats: {
-                select: {
-                    showtimeSeat: {
-                        select: {
-                            seat: {
-                                select: {
-                                    seatNumber: true
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        select: bookingSelect
     });
 
 
-    return bookings.map(b => ({
-        id: b.id,
-        totalPrice: Number(b.totalPrice),
-        status: b.status,
-        createdAt: b.createdAt,
-
-        movie: b.showtime.movie,
-
-        cinema: b.showtime.room.cinema,
-
-        room: {
-            name: b.showtime.room.name
-        },
-
-        showtime: {
-            startTime: b.showtime.startTime,
-            endTime: b.showtime.endTime
-        },
-
-        seats: b.bookingSeats.map(bs => bs.showtimeSeat.seat.seatNumber)
-    }));
+    return bookings.map(mapBooking);
 };

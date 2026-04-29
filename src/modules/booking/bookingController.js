@@ -1,5 +1,14 @@
 const bookingService = require("./bookingService");
 
+exports.getAllBookings = async (req, res) => {
+    try {
+        const data = await bookingService.getAllBookings(req.query);
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 exports.createBooking = async (req, res) => {
     try {
         const { userId, showtimeId, seatIds } = req.body;
