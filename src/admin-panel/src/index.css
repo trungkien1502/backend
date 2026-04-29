@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #111827;
+  background: #f6f8fb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.08), transparent 30rem),
+    #f6f8fb;
+  color: #111827;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: #fde68a;
+  color: #111827;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+main thead {
+  background: #f8fafc;
+}
+
+main th {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+main td {
+  border-bottom: 1px solid #eef2f7;
+}
+
+main tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+main > div > .space-y-6 > .flex:first-child {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1.5rem;
+  padding: 1.35rem;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94)),
+    #0f172a;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+}
+
+main > div > .space-y-6 > .flex:first-child::after {
+  content: "";
+  position: absolute;
+  inset: auto -8rem -9rem auto;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.16);
+  pointer-events: none;
+}
+
+main > div > .space-y-6 > .flex:first-child > * {
+  position: relative;
+  z-index: 1;
+}
+
+main > div > .space-y-6 > .flex:first-child h2 {
+  color: #ffffff !important;
+}
+
+main > div > .space-y-6 > .flex:first-child p {
+  color: #cbd5e1 !important;
+}
+
+main > div > .space-y-6 > .flex:first-child p:first-child {
+  color: #fbbf24 !important;
+  font-weight: 700;
+}
+
+main > div > .space-y-6 > .flex:first-child button {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+}
+
+main > div > .space-y-6 > .flex:first-child button:last-child:not(:first-child) {
+  background: #fbbf24 !important;
+  color: #0f172a !important;
+}
+
+main section {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+main section:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+}
+
+main table {
+  overflow: hidden;
+  border-radius: 0.875rem;
+}
+
+main thead th:first-child,
+main tbody td:first-child {
+  padding-left: 1rem;
+}
+
+main thead th:last-child,
+main tbody td:last-child {
+  padding-right: 1rem;
+}
+
+main tbody tr:hover {
+  background: #f8fafc;
+}
+
+main textarea {
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+main textarea:focus {
+  border-color: #fcd34d !important;
+  box-shadow: 0 0 0 4px #fef3c7 !important;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}

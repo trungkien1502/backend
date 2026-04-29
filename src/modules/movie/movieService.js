@@ -30,6 +30,18 @@ const formatMovieListItem = (movie) => ({
     genres: movie.genres.map((movieGenre) => movieGenre.genre.name)
 });
 
+const formatMovieDetail = (movie) => ({
+    ...movie,
+    people: movie.people.map((moviePerson) => ({
+        role: moviePerson.role,
+        character: moviePerson.character,
+        job: moviePerson.job,
+        person: moviePerson.person
+    }))
+});
+
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
 const parseMovieId = (id) => {
     const movieId = Number(id);
 
@@ -49,8 +61,7 @@ exports.getAllMovies = async (query) => {
         where: {
             ...(search && {
                 title: {
-                    contains: search,
-                    mode: "insensitive"
+                    contains: search
                 }
             }),
             ...(status && {
@@ -108,7 +119,7 @@ exports.getMovieById = async (id) => {
         throw error;
     }
 
-    return movie;
+    return formatMovieDetail(movie);
 };
 
 
@@ -116,9 +127,9 @@ exports.createMovie = async (data) => {
 
     const payload = {
         title: data.title,
-        description: data.description,
+        description: data.description || null,
         duration: data.duration ? Number(data.duration) : null,
-        poster: data.poster,
+        poster: data.poster || null,
         backdrop: data.backdrop || null,
         rating: data.rating ? Number(data.rating) : null,
         tmdbId: data.tmdbId ? Number(data.tmdbId) : null
@@ -153,18 +164,30 @@ exports.updateMovie = async (id, data) => {
     }
 
     const updateData = {
-        ...(data.title && { title: data.title }),
-        ...(data.description && { description: data.description }),
-        ...(data.rating && { rating: Number(data.rating) }),
-        ...(data.poster && { poster: data.poster }),
-        ...(data.backdrop && { backdrop: data.backdrop }),
-        ...(data.status && { status: data.status })
+        ...(hasOwn(data, "title") && { title: data.title }),
+        ...(hasOwn(data, "description") && { description: data.description || null }),
+        ...(hasOwn(data, "duration") && {
+            duration: data.duration === "" || data.duration === null ? null : Number(data.duration)
+        }),
+        ...(hasOwn(data, "rating") && {
+            rating: data.rating === "" || data.rating === null ? null : Number(data.rating)
+        }),
+        ...(hasOwn(data, "poster") && { poster: data.poster || null }),
+        ...(hasOwn(data, "backdrop") && { backdrop: data.backdrop || null }),
+        ...(hasOwn(data, "tmdbId") && {
+            tmdbId: data.tmdbId === "" || data.tmdbId === null ? null : Number(data.tmdbId)
+        }),
+        ...(hasOwn(data, "status") && { status: data.status })
     };
 
-    if (data.releaseDate) {
+    if (hasOwn(data, "releaseDate")) {
+        if (!data.releaseDate) {
+            updateData.releaseDate = null;
+        } else {
         const date = new Date(data.releaseDate);
         if (isNaN(date)) throw new Error("releaseDate không hợp lệ");
         updateData.releaseDate = date;
+        }
     }
 
     return await prisma.movie.update({

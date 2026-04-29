@@ -1,5 +1,30 @@
 const prisma = require("../../config/prisma");
-const bcrypt = require("bcrypt");
+
+const parseShowtimePayload = (data) => {
+    const movieId = Number(data.movieId);
+    const roomId = Number(data.roomId);
+    const price = Number(data.price);
+
+    if (!Number.isInteger(movieId) || movieId <= 0) {
+        throw new Error("Invalid movieId");
+    }
+
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+        throw new Error("Invalid roomId");
+    }
+
+    if (Number.isNaN(price) || price < 0) {
+        throw new Error("Invalid price");
+    }
+
+    return {
+        startTime: new Date(data.startTime),
+        endTime: new Date(data.endTime),
+        movieId,
+        roomId,
+        price
+    };
+};
 
 // exports.getAllShowtime = async (query = {}) => {
 //     return await prisma.showtime.findMany({
@@ -9,7 +34,15 @@ const bcrypt = require("bcrypt");
 
 exports.getShowtimeById = async (id) => { //get theo id showtime
     const showtime = await prisma.showtime.findUnique({
-        where: { id: parseInt(id) }
+        where: { id: parseInt(id) },
+        include: {
+            movie: true,
+            room: {
+                include: {
+                    cinema: true
+                }
+            }
+        }
     });
 
     if (!showtime) {
@@ -65,21 +98,23 @@ exports.getShowtimes = async ({ movieId, cinemaId, date }) => { // get showtime 
 //     });
 // };
 exports.createShowtime = async (data) => {
+    const payload = parseShowtimePayload(data);
+
     return await prisma.$transaction(async (tx) => {
         //  validate
         if (!data.startTime || !data.endTime) {
             throw new Error("Missing time");
         }
-        if (new Date(data.startTime) >= new Date(data.endTime)) {
+        if (payload.startTime >= payload.endTime) {
             throw new Error("Invalid time range");
         }
         //  check trùng lịch phòng 
         const conflict = await tx.showtime.findFirst({
             where: {
-                roomId: data.roomId,
+                roomId: payload.roomId,
                 AND: [
-                    { startTime: { lt: new Date(data.endTime) } },
-                    { endTime: { gt: new Date(data.startTime) } }
+                    { startTime: { lt: payload.endTime } },
+                    { endTime: { gt: payload.startTime } }
                 ]
             }
         });
@@ -89,16 +124,16 @@ exports.createShowtime = async (data) => {
         // 1. tạo showtime
         const showtime = await tx.showtime.create({
             data: {
-                startTime: new Date(data.startTime),
-                endTime: new Date(data.endTime),
-                movieId: data.movieId,
-                roomId: data.roomId,
-                price: data.price
+                startTime: payload.startTime,
+                endTime: payload.endTime,
+                movieId: payload.movieId,
+                roomId: payload.roomId,
+                price: payload.price
             }
         });
         // 2. lấy seat
         const seats = await tx.seat.findMany({
-            where: { roomId: data.roomId },
+            where: { roomId: payload.roomId },
             select: { id: true }
         });
         if (seats.length === 0) {
@@ -117,14 +152,16 @@ exports.createShowtime = async (data) => {
 };
 
 exports.updateShowtime = async (id, data) => {
+    const payload = parseShowtimePayload(data);
+
     return await prisma.showtime.update({
         where: { id: Number(id) },
         data: {
-            startTime: new Date(data.startTime),
-            endTime: new Date(data.endTime),
-            movieId: data.movieId,
-            roomId: data.roomId,
-            price: data.price
+            startTime: payload.startTime,
+            endTime: payload.endTime,
+            movieId: payload.movieId,
+            roomId: payload.roomId,
+            price: payload.price
         }
     });
 };
@@ -168,7 +205,6 @@ exports.deleteShowtime = async (id) => {
 //         orderBy: { startTime: "asc" }
 //     });
 // };
-
 
 
 

@@ -158,16 +158,14 @@ exports.getAllBookings = async ({ status, search } = {}) => {
                     {
                         user: {
                             name: {
-                                contains: search,
-                                mode: "insensitive"
+                                contains: search
                             }
                         }
                     },
                     {
                         user: {
                             email: {
-                                contains: search,
-                                mode: "insensitive"
+                                contains: search
                             }
                         }
                     },
@@ -175,8 +173,7 @@ exports.getAllBookings = async ({ status, search } = {}) => {
                         showtime: {
                             movie: {
                                 title: {
-                                    contains: search,
-                                    mode: "insensitive"
+                                    contains: search
                                 }
                             }
                         }
