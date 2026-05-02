@@ -180,6 +180,13 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
 model Booking {
   id         Int      @id @default(autoincrement())
   userId     Int
@@ -192,6 +199,7 @@ model Booking {
   showtime Showtime @relation(fields: [showtimeId], references: [id])
 
   bookingSeats BookingSeat[]
+  payment      Payment?
 }
 
 model BookingSeat {
@@ -201,4 +209,26 @@ model BookingSeat {
 
   booking      Booking      @relation(fields: [bookingId], references: [id])
   showtimeSeat ShowtimeSeat @relation(fields: [showtimeSeatId], references: [id])
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  bookingId   Int           @unique
+  provider    String
+  amount      Decimal
+  currency    String        @default("VND")
+  status      PaymentStatus @default(PENDING)
+  orderId     String        @unique
+  requestId   String        @unique
+  transId     String?
+  payUrl      String?       @db.Text
+  qrCodeUrl   String?       @db.Text
+  deeplink    String?       @db.Text
+  rawResponse Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([status])
 }

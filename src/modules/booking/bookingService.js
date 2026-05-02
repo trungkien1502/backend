@@ -50,6 +50,19 @@ const bookingSelect = {
                 }
             }
         }
+    },
+    payment: {
+        select: {
+            id: true,
+            provider: true,
+            amount: true,
+            currency: true,
+            status: true,
+            orderId: true,
+            transId: true,
+            createdAt: true,
+            updatedAt: true
+        }
     }
 };
 
@@ -69,7 +82,13 @@ const mapBooking = (booking) => ({
         startTime: booking.showtime.startTime,
         endTime: booking.showtime.endTime
     },
-    seats: booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeat.seat.seatNumber)
+    seats: booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeat.seat.seatNumber),
+    payment: booking.payment
+        ? {
+            ...booking.payment,
+            amount: Number(booking.payment.amount)
+        }
+        : null
 });
 
 exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
@@ -218,13 +237,27 @@ exports.cancelBooking = async (id) => {
             data: { status: "CANCELLED" }
         });
 
+        await tx.payment.updateMany({
+            where: {
+                bookingId: booking.id,
+                status: "PENDING"
+            },
+            data: { status: "CANCELLED" }
+        });
+
         // 2. release ghế
         const seatIds = booking.bookingSeats.map(b => b.showtimeSeatId);
 
         await tx.showtimeSeat.updateMany({
             where: {
                 id: { in: seatIds },
-                status: "BOOKED" // 🔥 chỉ trả ghế đã book
+                OR: [
+                    { status: "BOOKED" },
+                    {
+                        status: "HOLD",
+                        heldBy: booking.userId
+                    }
+                ]
             },
             data: {
                 status: "AVAILABLE",
