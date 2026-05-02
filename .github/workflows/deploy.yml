@@ -26,9 +26,6 @@ jobs:
           BACKUP_DIR: ${{ vars.DB_BACKUP_DIR || '' }}
           RETENTION_DAYS: ${{ vars.DB_BACKUP_RETENTION_DAYS || '7' }}
           HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || '' }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           MOMO_PARTNER_CODE: ${{ secrets.MOMO_PARTNER_CODE }}
           MOMO_ACCESS_KEY: ${{ secrets.MOMO_ACCESS_KEY }}
           MOMO_SECRET_KEY: ${{ secrets.MOMO_SECRET_KEY }}
@@ -39,7 +36,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,BACKUP_DIR,RETENTION_DAYS,HEALTHCHECK_URL,DATABASE_URL,JWT_SECRET,FRONTEND_URL,MOMO_PARTNER_CODE,MOMO_ACCESS_KEY,MOMO_SECRET_KEY,MOMO_IPN_URL,MOMO_REDIRECT_URL
+          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,BACKUP_DIR,RETENTION_DAYS,HEALTHCHECK_URL,MOMO_PARTNER_CODE,MOMO_ACCESS_KEY,MOMO_SECRET_KEY,MOMO_IPN_URL,MOMO_REDIRECT_URL
           command_timeout: 30m
           script: |
             set -e
@@ -49,19 +46,29 @@ jobs:
             git fetch origin "$BRANCH_NAME"
             git checkout "$BRANCH_NAME"
             git pull --ff-only origin "$BRANCH_NAME"
-            cat > .env << EOF
-            PORT=8080
-            DATABASE_URL=$DATABASE_URL
-            JWT_SECRET=$JWT_SECRET
-            FRONTEND_URL=$FRONTEND_URL
+            : "${MOMO_PARTNER_CODE:?MOMO_PARTNER_CODE secret is required}"
+            : "${MOMO_ACCESS_KEY:?MOMO_ACCESS_KEY secret is required}"
+            : "${MOMO_SECRET_KEY:?MOMO_SECRET_KEY secret is required}"
+            : "${MOMO_IPN_URL:?MOMO_IPN_URL secret is required}"
+            : "${MOMO_REDIRECT_URL:?MOMO_REDIRECT_URL secret is required}"
 
-            MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create
-            MOMO_PARTNER_CODE=$MOMO_PARTNER_CODE
-            MOMO_ACCESS_KEY=$MOMO_ACCESS_KEY
-            MOMO_SECRET_KEY=$MOMO_SECRET_KEY
-            MOMO_IPN_URL=$MOMO_IPN_URL
-            MOMO_REDIRECT_URL=$MOMO_REDIRECT_URL
-            PAYMENT_HOLD_MINUTES=10
-            EOF
+            if [ ! -f ".env" ]; then
+              echo "Missing .env on server. Keep DATABASE_URL and JWT_SECRET in the server .env first."
+              exit 1
+            fi
+
+            ENV_TMP="$(mktemp)"
+            grep -v -E '^(MOMO_ENDPOINT|MOMO_PARTNER_CODE|MOMO_ACCESS_KEY|MOMO_SECRET_KEY|MOMO_IPN_URL|MOMO_REDIRECT_URL|PAYMENT_HOLD_MINUTES)=' .env > "$ENV_TMP" || true
+            {
+              cat "$ENV_TMP"
+              printf '%s\n' "MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create"
+              printf '%s\n' "MOMO_PARTNER_CODE=$MOMO_PARTNER_CODE"
+              printf '%s\n' "MOMO_ACCESS_KEY=$MOMO_ACCESS_KEY"
+              printf '%s\n' "MOMO_SECRET_KEY=$MOMO_SECRET_KEY"
+              printf '%s\n' "MOMO_IPN_URL=$MOMO_IPN_URL"
+              printf '%s\n' "MOMO_REDIRECT_URL=$MOMO_REDIRECT_URL"
+              printf '%s\n' "PAYMENT_HOLD_MINUTES=10"
+            } > .env
+            rm -f "$ENV_TMP"
             chmod +x scripts/deploy.sh
             SKIP_GIT_SYNC=true ./scripts/deploy.sh
