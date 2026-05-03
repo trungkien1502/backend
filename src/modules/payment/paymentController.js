@@ -21,7 +21,16 @@ exports.createMomoPayment = async (req, res) => {
 
 exports.handleMomoIpn = async (req, res) => {
     try {
-        await paymentService.handleMomoIpn(req.body);
+        console.log("MoMo IPN received:", {
+            orderId: req.body.orderId,
+            requestId: req.body.requestId,
+            resultCode: req.body.resultCode,
+            amount: req.body.amount
+        });
+
+        const result = await paymentService.handleMomoIpn(req.body);
+
+        console.log("MoMo IPN processed:", result);
 
         res.status(204).send();
     } catch (error) {

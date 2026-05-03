@@ -253,6 +253,15 @@ exports.createMomoPayment = async ({ userId, showtimeId, seatIds }) => {
     };
 
     try {
+        console.log("MoMo create payload:", {
+            orderId: payload.orderId,
+            requestId: payload.requestId,
+            amount: payload.amount,
+            redirectUrl: payload.redirectUrl,
+            ipnUrl: payload.ipnUrl,
+            requestType: payload.requestType
+        });
+
         const { data } = await axios.post(config.endpoint, payload, { timeout: 30000 });
 
         await prisma.payment.update({
