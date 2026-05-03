@@ -41,6 +41,23 @@ exports.handleMomoIpn = async (req, res) => {
 
 exports.handleMomoReturn = async (req, res) => {
     try {
+        if (req.query.orderId && req.query.signature) {
+            try {
+                console.log("MoMo return received:", {
+                    orderId: req.query.orderId,
+                    requestId: req.query.requestId,
+                    resultCode: req.query.resultCode,
+                    amount: req.query.amount
+                });
+
+                const result = await paymentService.handleMomoIpn(req.query);
+
+                console.log("MoMo return processed:", result);
+            } catch (error) {
+                console.error("MoMo return processing error:", error.message);
+            }
+        }
+
         const payment = await paymentService.getPaymentByOrderId(req.query.orderId);
 
         if (!payment) {

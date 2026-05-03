@@ -371,8 +371,15 @@ exports.handleMomoIpn = async (body) => {
         const seatResult = await tx.showtimeSeat.updateMany({
             where: {
                 id: { in: showtimeSeatIds },
-                status: "HOLD",
-                heldBy: payment.booking.userId
+                OR: [
+                    {
+                        status: "HOLD",
+                        heldBy: payment.booking.userId
+                    },
+                    {
+                        status: "AVAILABLE"
+                    }
+                ]
             },
             data: {
                 status: "BOOKED",
