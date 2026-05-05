@@ -20,6 +20,8 @@ exports.createMomoPayment = async (req, res) => {
 };
 
 exports.handleMomoIpn = async (req, res) => {
+    console.log("🔥 FULL IPN BODY:", JSON.stringify(req.body, null, 2));
+
     try {
         console.log("MoMo IPN received:", {
             orderId: req.body.orderId,

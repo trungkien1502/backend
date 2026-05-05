@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Ban, RefreshCcw, Ticket } from 'lucide-react';
-import { Alert, Button, Card, Input, Select } from '../components/common';
+import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
 import { bookingAPI, extractError } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
@@ -90,7 +90,7 @@ export const BookingsPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.9fr)_minmax(320px,0.9fr)]">
+      <div className="grid gap-6">
         <Card title="Booking list">
           <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <Input
@@ -171,66 +171,69 @@ export const BookingsPage = () => {
 
           {!bookings.length && !loading ? <p className="mt-6 text-sm text-slate-500">No bookings found.</p> : null}
         </Card>
+      </div>
 
-        <Card title="Selected booking">
-          {selectedBooking ? (
-            <div className="space-y-4 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                  <Ticket size={16} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950">Booking #{selectedBooking.id}</h3>
-                  <p className="mt-1 text-slate-500">{selectedBooking.user?.name || 'Unknown user'}</p>
-                </div>
+      <Modal
+        isOpen={Boolean(selectedBooking)}
+        title={selectedBooking ? `Booking #${selectedBooking.id}` : 'Booking detail'}
+        subtitle={selectedBooking?.user?.name || 'Unknown user'}
+        onClose={() => setSelectedBooking(null)}
+      >
+        {selectedBooking ? (
+          <div className="space-y-4 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                <Ticket size={16} />
               </div>
-
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Movie</span>
-                  <span className="text-right font-medium text-slate-900">{selectedBooking.movie.title}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Venue</span>
-                  <span className="text-right font-medium text-slate-900">
-                    {selectedBooking.cinema.name} · {selectedBooking.room.name}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Starts</span>
-                  <span className="text-right font-medium text-slate-900">{formatDateTime(selectedBooking.showtime.startTime)}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Total</span>
-                  <span className="text-right font-medium text-slate-900">{formatCurrency(selectedBooking.totalPrice)}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Status</span>
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass(selectedBooking.status)}`}>
-                    {selectedBooking.status}
-                  </span>
-                </div>
-              </div>
-
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Seats</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedBooking.seats.map((seat) => (
-                    <span
-                      key={seat}
-                      className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {seat}
-                    </span>
-                  ))}
-                </div>
+                <h3 className="text-lg font-semibold text-slate-950">Booking #{selectedBooking.id}</h3>
+                <p className="mt-1 text-slate-500">{selectedBooking.user?.email || '--'}</p>
               </div>
             </div>
-          ) : (
-            <p className="text-sm text-slate-500">Select a booking to inspect it.</p>
-          )}
-        </Card>
-      </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Movie</span>
+                <span className="text-right font-medium text-slate-900">{selectedBooking.movie.title}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Venue</span>
+                <span className="text-right font-medium text-slate-900">
+                  {selectedBooking.cinema.name} · {selectedBooking.room.name}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Starts</span>
+                <span className="text-right font-medium text-slate-900">{formatDateTime(selectedBooking.showtime.startTime)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Total</span>
+                <span className="text-right font-medium text-slate-900">{formatCurrency(selectedBooking.totalPrice)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Status</span>
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass(selectedBooking.status)}`}>
+                  {selectedBooking.status}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Seats</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedBooking.seats.map((seat) => (
+                  <span
+                    key={seat}
+                    className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
+                  >
+                    {seat}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };

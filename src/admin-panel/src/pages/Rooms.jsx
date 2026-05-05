@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DoorOpen, Edit3, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Select } from '../components/common';
+import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
 import { cinemaAPI, extractError, roomAPI, seatAPI } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatDateTime } from '../utils/formatters';
@@ -30,6 +30,7 @@ export const RoomsPage = () => {
   const [roomForm, setRoomForm] = useState(roomFormDefaults);
   const [seatForm, setSeatForm] = useState(seatFormDefaults);
   const [editingId, setEditingId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [filters, setFilters] = useState({ search: '', cinemaId: '' });
   const [loading, setLoading] = useState(true);
   const [seatLoading, setSeatLoading] = useState(false);
@@ -101,6 +102,16 @@ export const RoomsPage = () => {
     setRoomForm(roomFormDefaults);
   };
 
+  const openCreateForm = () => {
+    resetRoomForm();
+    setFormOpen(true);
+  };
+
+  const closeRoomForm = () => {
+    setFormOpen(false);
+    resetRoomForm();
+  };
+
   const handleEdit = (room) => {
     setEditingId(room.id);
     setRoomForm({
@@ -108,6 +119,7 @@ export const RoomsPage = () => {
       cinemaId: String(room.cinemaId || ''),
       totalSeats: room.totalSeats ?? '',
     });
+    setFormOpen(true);
   };
 
   const handleRoomSubmit = async (event) => {
@@ -126,7 +138,7 @@ export const RoomsPage = () => {
       }
 
       await fetchRooms();
-      resetRoomForm();
+      closeRoomForm();
     } catch (error) {
       setMessage({ type: 'error', text: extractError(error) });
     } finally {
@@ -147,7 +159,7 @@ export const RoomsPage = () => {
       }
 
       if (editingId === roomId) {
-        resetRoomForm();
+        closeRoomForm();
       }
 
       await fetchRooms();
@@ -236,7 +248,7 @@ export const RoomsPage = () => {
             <RefreshCcw size={16} />
             Refresh
           </Button>
-          <Button onClick={resetRoomForm}>
+          <Button onClick={openCreateForm}>
             <Plus size={16} />
             New room
           </Button>
@@ -247,7 +259,7 @@ export const RoomsPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(360px,1fr)]">
+      <div className="grid gap-6">
         <Card title="Room list">
           <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <Input
@@ -333,118 +345,124 @@ export const RoomsPage = () => {
           {!rooms.length && !loading ? <p className="mt-6 text-sm text-slate-500">No rooms found.</p> : null}
         </Card>
 
-        <div className="space-y-6">
-          <Card title={editingId ? 'Edit room' : 'Create room'}>
-            <form onSubmit={handleRoomSubmit} className="space-y-4">
+      </div>
+
+      <Modal
+        isOpen={formOpen}
+        title={editingId ? 'Edit room' : 'Create room'}
+        subtitle={editingId ? 'Update room metadata.' : 'Create a room before generating seats.'}
+        onClose={closeRoomForm}
+      >
+        <form onSubmit={handleRoomSubmit} className="space-y-4">
+          <Input
+            label="Room name"
+            required
+            value={roomForm.name}
+            onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
+            placeholder="Screen 1"
+          />
+          <Select
+            label="Cinema"
+            required
+            options={editorCinemaOptions}
+            value={roomForm.cinemaId}
+            onChange={(event) => setRoomForm({ ...roomForm, cinemaId: event.target.value })}
+          />
+          <Input
+            label="Target seat count"
+            type="number"
+            required
+            value={roomForm.totalSeats}
+            onChange={(event) => setRoomForm({ ...roomForm, totalSeats: event.target.value })}
+          />
+          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" onClick={closeRoomForm}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              {editingId ? 'Save changes' : 'Create room'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedRoom)}
+        title={selectedRoom ? `${selectedRoom.name} seats` : 'Seat management'}
+        subtitle={
+          selectedRoom
+            ? `${selectedRoom.cinema?.name || `Cinema #${selectedRoom.cinemaId}`} · ${(selectedRoom._count?.seats || seats.length)} / ${selectedRoom.totalSeats} configured`
+            : ''
+        }
+        onClose={() => {
+          setSelectedRoom(null);
+          setSeats([]);
+        }}
+        size="xl"
+      >
+        {selectedRoom ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-medium text-slate-900">{selectedRoom.name}</p>
+              <p className="mt-1 text-sm text-slate-500">{selectedRoom.cinema?.name || `Cinema #${selectedRoom.cinemaId}`}</p>
+              <p className="mt-2 text-xs text-slate-500">Last fetched {formatDateTime(new Date())}</p>
+            </div>
+
+            <form onSubmit={handleGenerateSeats} className="space-y-4">
               <Input
-                label="Room name"
-                required
-                value={roomForm.name}
-                onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
-                placeholder="Screen 1"
-              />
-              <Select
-                label="Cinema"
-                required
-                options={editorCinemaOptions}
-                value={roomForm.cinemaId}
-                onChange={(event) => setRoomForm({ ...roomForm, cinemaId: event.target.value })}
+                label="Rows"
+                value={seatForm.rows}
+                onChange={(event) => setSeatForm({ ...seatForm, rows: event.target.value })}
+                placeholder="A,B,C,D,E"
               />
               <Input
-                label="Target seat count"
+                label="Columns per row"
                 type="number"
-                required
-                value={roomForm.totalSeats}
-                onChange={(event) => setRoomForm({ ...roomForm, totalSeats: event.target.value })}
+                value={seatForm.columns}
+                onChange={(event) => setSeatForm({ ...seatForm, columns: event.target.value })}
+                placeholder="10"
               />
               <div className="flex flex-wrap gap-3">
-                <Button type="submit" loading={saving}>
-                  {editingId ? 'Save changes' : 'Create room'}
+                <Button type="submit" loading={seatSaving}>
+                  <Rows3 size={16} />
+                  Generate seats
                 </Button>
-                <Button type="button" variant="outline" onClick={resetRoomForm}>
-                  Clear
+                <Button type="button" variant="outline" onClick={() => fetchSeats(selectedRoom.id)}>
+                  Refresh seats
+                </Button>
+                <Button type="button" variant="danger" onClick={handleClearSeats}>
+                  <Trash2 size={16} />
+                  Clear room seats
                 </Button>
               </div>
             </form>
-          </Card>
 
-          <Card
-            title="Seat management"
-            action={
-              selectedRoom ? (
-                <span className="text-sm text-slate-500">
-                  {(selectedRoom._count?.seats || seats.length)} / {selectedRoom.totalSeats} configured
-                </span>
-              ) : null
-            }
-          >
-            {selectedRoom ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-medium text-slate-900">{selectedRoom.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{selectedRoom.cinema?.name || `Cinema #${selectedRoom.cinemaId}`}</p>
-                  <p className="mt-2 text-xs text-slate-500">Last fetched {formatDateTime(new Date())}</p>
-                </div>
-
-                <form onSubmit={handleGenerateSeats} className="space-y-4">
-                  <Input
-                    label="Rows"
-                    value={seatForm.rows}
-                    onChange={(event) => setSeatForm({ ...seatForm, rows: event.target.value })}
-                    placeholder="A,B,C,D,E"
-                  />
-                  <Input
-                    label="Columns per row"
-                    type="number"
-                    value={seatForm.columns}
-                    onChange={(event) => setSeatForm({ ...seatForm, columns: event.target.value })}
-                    placeholder="10"
-                  />
-                  <div className="flex flex-wrap gap-3">
-                    <Button type="submit" loading={seatSaving}>
-                      <Rows3 size={16} />
-                      Generate seats
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => fetchSeats(selectedRoom.id)}>
-                      Refresh seats
-                    </Button>
-                    <Button type="button" variant="danger" onClick={handleClearSeats}>
-                      <Trash2 size={16} />
-                      Clear room seats
-                    </Button>
-                  </div>
-                </form>
-
-                <div className="rounded-lg border border-slate-200 bg-white">
-                  <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-                    Configured seats
-                  </div>
-                  <div className="px-4 py-4">
-                    {seatLoading ? (
-                      <p className="text-sm text-slate-500">Loading seats...</p>
-                    ) : seats.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {seats.map((seat) => (
-                          <span
-                            key={seat.id}
-                            className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
-                          >
-                            {seat.seatNumber}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">No seats configured yet.</p>
-                    )}
-                  </div>
-                </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+                Configured seats
               </div>
-            ) : (
-              <p className="text-sm text-slate-500">Select a room to generate or inspect seats.</p>
-            )}
-          </Card>
-        </div>
-      </div>
+              <div className="px-4 py-4">
+                {seatLoading ? (
+                  <p className="text-sm text-slate-500">Loading seats...</p>
+                ) : seats.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {seats.map((seat) => (
+                      <span
+                        key={seat.id}
+                        className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
+                      >
+                        {seat.seatNumber}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No seats configured yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };

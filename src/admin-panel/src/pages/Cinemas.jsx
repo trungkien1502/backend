@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Building2, Edit3, MapPin, Plus, RefreshCcw, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input } from '../components/common';
+import { Alert, Button, Card, Input, Modal } from '../components/common';
 import { cinemaAPI, extractError } from '../services/api';
 import { formatDateTime, truncate } from '../utils/formatters';
 
@@ -25,6 +25,7 @@ export const CinemasPage = () => {
   const [selectedCinema, setSelectedCinema] = useState(null);
   const [formData, setFormData] = useState(cinemaFormDefaults);
   const [editingId, setEditingId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +57,16 @@ export const CinemasPage = () => {
     setFormData(cinemaFormDefaults);
   };
 
+  const openCreateForm = () => {
+    resetForm();
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    resetForm();
+  };
+
   const handleEdit = (cinema) => {
     setEditingId(cinema.id);
     setFormData({
@@ -65,6 +76,7 @@ export const CinemasPage = () => {
       latitude: cinema.latitude ?? '',
       longitude: cinema.longitude ?? '',
     });
+    setFormOpen(true);
   };
 
   const handleSubmit = async (event) => {
@@ -83,7 +95,7 @@ export const CinemasPage = () => {
       }
 
       await fetchCinemas();
-      resetForm();
+      closeForm();
     } catch (error) {
       setMessage({ type: 'error', text: extractError(error) });
     } finally {
@@ -103,7 +115,7 @@ export const CinemasPage = () => {
       }
 
       if (editingId === cinemaId) {
-        resetForm();
+        closeForm();
       }
 
       await fetchCinemas();
@@ -133,7 +145,7 @@ export const CinemasPage = () => {
             <RefreshCcw size={16} />
             Refresh
           </Button>
-          <Button onClick={resetForm}>
+          <Button onClick={openCreateForm}>
             <Plus size={16} />
             New cinema
           </Button>
@@ -144,7 +156,7 @@ export const CinemasPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
+      <div className="grid gap-6">
         <Card title="Cinema list">
           <div className="mb-6">
             <Input
@@ -224,101 +236,104 @@ export const CinemasPage = () => {
           {!visibleCinemas.length && !loading ? <p className="mt-6 text-sm text-slate-500">No cinemas found.</p> : null}
         </Card>
 
-        <div className="space-y-6">
-          <Card title={editingId ? 'Edit cinema' : 'Create cinema'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="Name"
-                required
-                value={formData.name}
-                onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-                placeholder="Cinema name"
-              />
-              <Input
-                label="Location"
-                value={formData.location}
-                onChange={(event) => setFormData({ ...formData, location: event.target.value })}
-                placeholder="Address or area"
-              />
-              <Input
-                label="Poster URL"
-                value={formData.poster}
-                onChange={(event) => setFormData({ ...formData, poster: event.target.value })}
-                placeholder="https://..."
-              />
+      </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  label="Latitude"
-                  type="number"
-                  step="0.0000001"
-                  value={formData.latitude}
-                  onChange={(event) => setFormData({ ...formData, latitude: event.target.value })}
-                />
-                <Input
-                  label="Longitude"
-                  type="number"
-                  step="0.0000001"
-                  value={formData.longitude}
-                  onChange={(event) => setFormData({ ...formData, longitude: event.target.value })}
-                />
+      <Modal
+        isOpen={formOpen}
+        title={editingId ? 'Edit cinema' : 'Create cinema'}
+        subtitle={editingId ? 'Update venue metadata.' : 'Register a new cinema venue.'}
+        onClose={closeForm}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Name"
+            required
+            value={formData.name}
+            onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+            placeholder="Cinema name"
+          />
+          <Input
+            label="Location"
+            value={formData.location}
+            onChange={(event) => setFormData({ ...formData, location: event.target.value })}
+            placeholder="Address or area"
+          />
+          <Input
+            label="Poster URL"
+            value={formData.poster}
+            onChange={(event) => setFormData({ ...formData, poster: event.target.value })}
+            placeholder="https://..."
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Latitude"
+              type="number"
+              step="0.0000001"
+              value={formData.latitude}
+              onChange={(event) => setFormData({ ...formData, latitude: event.target.value })}
+            />
+            <Input
+              label="Longitude"
+              type="number"
+              step="0.0000001"
+              value={formData.longitude}
+              onChange={(event) => setFormData({ ...formData, longitude: event.target.value })}
+            />
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              {editingId ? 'Save changes' : 'Create cinema'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedCinema)}
+        title={selectedCinema?.name || 'Cinema detail'}
+        subtitle="Venue metadata"
+        onClose={() => setSelectedCinema(null)}
+      >
+        {selectedCinema ? (
+          <div className="space-y-4 text-sm">
+            <div>
+              <div className="flex items-center gap-2">
+                <MapPin size={16} className="text-slate-400" />
+                <h3 className="text-lg font-semibold text-slate-950">{selectedCinema.name}</h3>
               </div>
+              <p className="mt-2 leading-6 text-slate-600">{selectedCinema.location || 'No location set.'}</p>
+            </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" loading={saving}>
-                  {editingId ? 'Save changes' : 'Create cinema'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Clear
-                </Button>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Latitude</span>
+                <span className="font-medium text-slate-900">{selectedCinema.latitude || '--'}</span>
               </div>
-            </form>
-          </Card>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Longitude</span>
+                <span className="font-medium text-slate-900">{selectedCinema.longitude || '--'}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Created</span>
+                <span className="font-medium text-slate-900">{formatDateTime(selectedCinema.createdAt)}</span>
+              </div>
+            </div>
 
-          <Card title="Selected cinema">
-            {selectedCinema ? (
-              <div className="space-y-4 text-sm">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-slate-400" />
-                    <h3 className="text-lg font-semibold text-slate-950">{selectedCinema.name}</h3>
-                  </div>
-                  <p className="mt-2 leading-6 text-slate-600">{selectedCinema.location || 'No location set.'}</p>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Latitude</span>
-                    <span className="font-medium text-slate-900">{selectedCinema.latitude || '--'}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Longitude</span>
-                    <span className="font-medium text-slate-900">{selectedCinema.longitude || '--'}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Created</span>
-                    <span className="font-medium text-slate-900">{formatDateTime(selectedCinema.createdAt)}</span>
-                  </div>
-                </div>
-
-                {selectedCinema.poster ? (
-                  <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                    <img
-                      src={selectedCinema.poster}
-                      alt={selectedCinema.name}
-                      className="h-56 w-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">No poster set.</p>
-                )}
+            {selectedCinema.poster ? (
+              <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                <img src={selectedCinema.poster} alt={selectedCinema.name} className="h-56 w-full object-cover" />
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Select a cinema to inspect its metadata.</p>
+              <p className="text-sm text-slate-500">No poster set.</p>
             )}
-          </Card>
-        </div>
-      </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };

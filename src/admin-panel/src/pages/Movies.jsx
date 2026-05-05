@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Edit3, Film, Plus, RefreshCcw, Trash2, X } from 'lucide-react';
-import { Alert, Button, Card, Input, Select } from '../components/common';
+import { Edit3, Film, Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
 import { extractError, movieAPI } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import {
@@ -126,6 +126,7 @@ export const MoviesPage = () => {
   const loadMovieDetail = async (movieId) => {
     try {
       setDetailLoading(true);
+      setSelectedMovie(null);
       const data = await movieAPI.detail(movieId);
       setSelectedMovie(data);
     } catch (error) {
@@ -241,7 +242,7 @@ export const MoviesPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(360px,1fr)]">
+      <div className="grid gap-6">
         <Card title="Movie list">
           <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <Input
@@ -333,186 +334,163 @@ export const MoviesPage = () => {
           {!visibleMovies.length && !loading ? <p className="mt-6 text-sm text-slate-500">No movies found.</p> : null}
         </Card>
 
-        <div className="space-y-6">
-          <Card title="Selected movie">
-            {detailLoading ? (
-              <p className="text-sm text-slate-500">Loading movie detail...</p>
-            ) : selectedMovie ? (
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950">{selectedMovie.title}</h3>
-                  <p className="mt-1 text-slate-500">
-                    {statusLabel(selectedMovie.status)} · {formatRuntime(selectedMovie.duration)} · {formatDate(selectedMovie.releaseDate)}
-                  </p>
-                </div>
-
-                <p className="leading-6 text-slate-600">{selectedMovie.description || 'No description.'}</p>
-
-                <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Genres</span>
-                    <span className="text-right font-medium text-slate-900">
-                      {selectedGenres.join(', ') || '--'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Showtimes</span>
-                    <span className="font-medium text-slate-900">{selectedMovie.showtimes?.length || 0}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Created</span>
-                    <span className="font-medium text-slate-900">{formatDateTime(selectedMovie.createdAt)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Directors</p>
-                  <div className="space-y-2">
-                    {selectedDirectors.length ? (
-                      selectedDirectors.map((item) => (
-                          <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
-                            <p className="font-medium text-slate-900">{item.person.name}</p>
-                            <p className="text-xs text-slate-500">{item.job || 'Director'}</p>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-slate-500">No directors attached.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Cast</p>
-                  <div className="space-y-2">
-                    {selectedCast.length ? (
-                      selectedCast.map((item) => (
-                          <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
-                            <p className="font-medium text-slate-900">{item.person.name}</p>
-                            <p className="text-xs text-slate-500">{item.character || 'No character name'}</p>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-slate-500">No cast attached.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Select a movie to inspect its detail payload.</p>
-            )}
-          </Card>
-        </div>
       </div>
 
-      {formOpen ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/45 backdrop-blur-sm">
-          <button type="button" className="flex-1 cursor-default" aria-label="Close movie form" onClick={closeForm} />
-          <aside className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl shadow-slate-950/30">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">
-                  {editingId ? 'Edit movie' : 'Create movie'}
-                </p>
-                <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-                  {editingId ? 'Update movie metadata' : 'Add a new movie'}
-                </h3>
+      <Modal
+        isOpen={detailLoading || Boolean(selectedMovie)}
+        title={selectedMovie?.title || 'Movie detail'}
+        subtitle={selectedMovie ? `${statusLabel(selectedMovie.status)} · ${formatRuntime(selectedMovie.duration)} · ${formatDate(selectedMovie.releaseDate)}` : 'Loading movie detail...'}
+        onClose={() => {
+          setSelectedMovie(null);
+          setDetailLoading(false);
+        }}
+        size="xl"
+      >
+        {detailLoading ? (
+          <p className="text-sm text-slate-500">Loading movie detail...</p>
+        ) : selectedMovie ? (
+          <div className="space-y-4 text-sm">
+            <p className="leading-6 text-slate-600">{selectedMovie.description || 'No description.'}</p>
+
+            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Genres</span>
+                <span className="text-right font-medium text-slate-900">{selectedGenres.join(', ') || '--'}</span>
               </div>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-                onClick={closeForm}
-                aria-label="Close form"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Showtimes</span>
+                <span className="font-medium text-slate-900">{selectedMovie.showtimes?.length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Created</span>
+                <span className="font-medium text-slate-900">{formatDateTime(selectedMovie.createdAt)}</span>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
-                <Input
-                  label="Title"
-                  required
-                  value={formData.title}
-                  onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                  placeholder="Movie title"
-                />
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Description</label>
-                  <textarea
-                    rows="5"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none"
-                    value={formData.description}
-                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                    placeholder="Synopsis"
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Input
-                    label="Duration (minutes)"
-                    type="number"
-                    value={formData.duration}
-                    onChange={(event) => setFormData({ ...formData, duration: event.target.value })}
-                  />
-                  <Input
-                    label="Rating"
-                    type="number"
-                    step="0.1"
-                    value={formData.rating}
-                    onChange={(event) => setFormData({ ...formData, rating: event.target.value })}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Input
-                    label="TMDB ID"
-                    type="number"
-                    value={formData.tmdbId}
-                    onChange={(event) => setFormData({ ...formData, tmdbId: event.target.value })}
-                  />
-                  <Input
-                    label="Release date"
-                    type="date"
-                    value={formData.releaseDate}
-                    onChange={(event) => setFormData({ ...formData, releaseDate: event.target.value })}
-                  />
-                </div>
-
-                <Select
-                  label="Status"
-                  value={formData.status}
-                  onChange={(event) => setFormData({ ...formData, status: event.target.value })}
-                  options={movieStatusOptions.filter((option) => option.value)}
-                />
-
-                <Input
-                  label="Poster URL"
-                  value={formData.poster}
-                  onChange={(event) => setFormData({ ...formData, poster: event.target.value })}
-                  placeholder="https://..."
-                />
-
-                <Input
-                  label="Backdrop URL"
-                  value={formData.backdrop}
-                  onChange={(event) => setFormData({ ...formData, backdrop: event.target.value })}
-                  placeholder="https://..."
-                />
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Directors</p>
+              <div className="space-y-2">
+                {selectedDirectors.length ? (
+                  selectedDirectors.map((item) => (
+                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
+                      <p className="font-medium text-slate-900">{item.person.name}</p>
+                      <p className="text-xs text-slate-500">{item.job || 'Director'}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No directors attached.</p>
+                )}
               </div>
+            </div>
 
-              <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                <Button type="button" variant="outline" onClick={closeForm}>
-                  Cancel
-                </Button>
-                <Button type="submit" loading={saving}>
-                  {editingId ? 'Save changes' : 'Create movie'}
-                </Button>
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Cast</p>
+              <div className="space-y-2">
+                {selectedCast.length ? (
+                  selectedCast.map((item) => (
+                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
+                      <p className="font-medium text-slate-900">{item.person.name}</p>
+                      <p className="text-xs text-slate-500">{item.character || 'No character name'}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No cast attached.</p>
+                )}
               </div>
-            </form>
-          </aside>
-        </div>
-      ) : null}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={formOpen}
+        title={editingId ? 'Edit movie' : 'Create movie'}
+        subtitle={editingId ? 'Update movie metadata.' : 'Add a new movie.'}
+        onClose={closeForm}
+        size="xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Title"
+            required
+            value={formData.title}
+            onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+            placeholder="Movie title"
+          />
+
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">Description</label>
+            <textarea
+              rows="5"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none"
+              value={formData.description}
+              onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+              placeholder="Synopsis"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Duration (minutes)"
+              type="number"
+              value={formData.duration}
+              onChange={(event) => setFormData({ ...formData, duration: event.target.value })}
+            />
+            <Input
+              label="Rating"
+              type="number"
+              step="0.1"
+              value={formData.rating}
+              onChange={(event) => setFormData({ ...formData, rating: event.target.value })}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="TMDB ID"
+              type="number"
+              value={formData.tmdbId}
+              onChange={(event) => setFormData({ ...formData, tmdbId: event.target.value })}
+            />
+            <Input
+              label="Release date"
+              type="date"
+              value={formData.releaseDate}
+              onChange={(event) => setFormData({ ...formData, releaseDate: event.target.value })}
+            />
+          </div>
+
+          <Select
+            label="Status"
+            value={formData.status}
+            onChange={(event) => setFormData({ ...formData, status: event.target.value })}
+            options={movieStatusOptions.filter((option) => option.value)}
+          />
+
+          <Input
+            label="Poster URL"
+            value={formData.poster}
+            onChange={(event) => setFormData({ ...formData, poster: event.target.value })}
+            placeholder="https://..."
+          />
+
+          <Input
+            label="Backdrop URL"
+            value={formData.backdrop}
+            onChange={(event) => setFormData({ ...formData, backdrop: event.target.value })}
+            placeholder="https://..."
+          />
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              {editingId ? 'Save changes' : 'Create movie'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

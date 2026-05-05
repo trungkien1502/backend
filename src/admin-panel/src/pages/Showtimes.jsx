@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CalendarRange, Edit3, Plus, RefreshCcw, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Select } from '../components/common';
+import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
 import { cinemaAPI, extractError, movieAPI, roomAPI, showtimeAPI } from '../services/api';
 import { formatCurrency, formatDateTime, toDateInputValue, toDateTimeLocalValue } from '../utils/formatters';
 
@@ -30,6 +30,7 @@ export const ShowtimesPage = () => {
   const [formData, setFormData] = useState(showtimeFormDefaults);
   const [filters, setFilters] = useState({ movieId: '', cinemaId: '', date: '' });
   const [editingId, setEditingId] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -84,6 +85,16 @@ export const ShowtimesPage = () => {
     setFormData(showtimeFormDefaults);
   };
 
+  const openCreateForm = () => {
+    resetForm();
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    resetForm();
+  };
+
   const handleEdit = (showtime) => {
     setEditingId(showtime.id);
     setFormData({
@@ -94,6 +105,7 @@ export const ShowtimesPage = () => {
       endTime: toDateTimeLocalValue(showtime.endTime),
       price: String(showtime.price),
     });
+    setFormOpen(true);
   };
 
   const handleSubmit = async (event) => {
@@ -112,7 +124,7 @@ export const ShowtimesPage = () => {
       }
 
       await fetchShowtimes();
-      resetForm();
+      closeForm();
     } catch (error) {
       setMessage({ type: 'error', text: extractError(error) });
     } finally {
@@ -132,7 +144,7 @@ export const ShowtimesPage = () => {
       }
 
       if (editingId === showtimeId) {
-        resetForm();
+        closeForm();
       }
 
       await fetchShowtimes();
@@ -201,7 +213,7 @@ export const ShowtimesPage = () => {
             <RefreshCcw size={16} />
             Refresh
           </Button>
-          <Button onClick={resetForm}>
+          <Button onClick={openCreateForm}>
             <Plus size={16} />
             New showtime
           </Button>
@@ -212,7 +224,7 @@ export const ShowtimesPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(360px,1fr)]">
+      <div className="grid gap-6">
         <Card title="Showtime list">
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <Select
@@ -298,109 +310,112 @@ export const ShowtimesPage = () => {
           {!showtimes.length && !loading ? <p className="mt-6 text-sm text-slate-500">No showtimes found.</p> : null}
         </Card>
 
-        <div className="space-y-6">
-          <Card title={editingId ? 'Edit showtime' : 'Create showtime'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Select
-                label="Movie"
-                required
-                options={editorMovieOptions}
-                value={formData.movieId}
-                onChange={(event) => setFormData({ ...formData, movieId: event.target.value })}
-              />
-              <Select
-                label="Cinema"
-                required
-                options={editorCinemaOptions}
-                value={formData.cinemaId}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    cinemaId: event.target.value,
-                    roomId: '',
-                  })
-                }
-              />
-              <Select
-                label="Room"
-                required
-                options={editorRoomOptions}
-                value={formData.roomId}
-                onChange={(event) => setFormData({ ...formData, roomId: event.target.value })}
-              />
-              <Input
-                label="Start time"
-                type="datetime-local"
-                required
-                value={formData.startTime}
-                onChange={(event) => setFormData({ ...formData, startTime: event.target.value })}
-              />
-              <Input
-                label="End time"
-                type="datetime-local"
-                required
-                value={formData.endTime}
-                onChange={(event) => setFormData({ ...formData, endTime: event.target.value })}
-              />
-              <Input
-                label="Ticket price"
-                type="number"
-                required
-                value={formData.price}
-                onChange={(event) => setFormData({ ...formData, price: event.target.value })}
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" loading={saving}>
-                  {editingId ? 'Save changes' : 'Create showtime'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Clear
-                </Button>
-              </div>
-            </form>
-          </Card>
-
-          <Card title="Selected showtime">
-            {selectedShowtime ? (
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950">{selectedShowtime.movie.title}</h3>
-                  <p className="mt-1 text-slate-500">{selectedShowtime.room.cinema.name} · {selectedShowtime.room.name}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Date</span>
-                    <span className="font-medium text-slate-900">{toDateInputValue(selectedShowtime.startTime)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Starts</span>
-                    <span className="font-medium text-slate-900">{formatDateTime(selectedShowtime.startTime)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Ends</span>
-                    <span className="font-medium text-slate-900">{formatDateTime(selectedShowtime.endTime)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-4">
-                    <span className="text-slate-500">Price</span>
-                    <span className="font-medium text-slate-900">{formatCurrency(selectedShowtime.price)}</span>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Room readiness</p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {selectedShowtime.room._count?.seats || selectedShowtime.room.totalSeats
-                      ? 'Room is attached to the cinema and can be scheduled.'
-                      : 'Room has no seats configured yet.'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Select a showtime to inspect its schedule slot.</p>
-            )}
-          </Card>
-        </div>
       </div>
+
+      <Modal
+        isOpen={formOpen}
+        title={editingId ? 'Edit showtime' : 'Create showtime'}
+        subtitle={editingId ? 'Update schedule details.' : 'Plan a new screening slot.'}
+        onClose={closeForm}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Select
+            label="Movie"
+            required
+            options={editorMovieOptions}
+            value={formData.movieId}
+            onChange={(event) => setFormData({ ...formData, movieId: event.target.value })}
+          />
+          <Select
+            label="Cinema"
+            required
+            options={editorCinemaOptions}
+            value={formData.cinemaId}
+            onChange={(event) =>
+              setFormData({
+                ...formData,
+                cinemaId: event.target.value,
+                roomId: '',
+              })
+            }
+          />
+          <Select
+            label="Room"
+            required
+            options={editorRoomOptions}
+            value={formData.roomId}
+            onChange={(event) => setFormData({ ...formData, roomId: event.target.value })}
+          />
+          <Input
+            label="Start time"
+            type="datetime-local"
+            required
+            value={formData.startTime}
+            onChange={(event) => setFormData({ ...formData, startTime: event.target.value })}
+          />
+          <Input
+            label="End time"
+            type="datetime-local"
+            required
+            value={formData.endTime}
+            onChange={(event) => setFormData({ ...formData, endTime: event.target.value })}
+          />
+          <Input
+            label="Ticket price"
+            type="number"
+            required
+            value={formData.price}
+            onChange={(event) => setFormData({ ...formData, price: event.target.value })}
+          />
+          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              {editingId ? 'Save changes' : 'Create showtime'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedShowtime)}
+        title={selectedShowtime?.movie.title || 'Showtime detail'}
+        subtitle={selectedShowtime ? `${selectedShowtime.room.cinema.name} · ${selectedShowtime.room.name}` : ''}
+        onClose={() => setSelectedShowtime(null)}
+      >
+        {selectedShowtime ? (
+          <div className="space-y-4 text-sm">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Date</span>
+                <span className="font-medium text-slate-900">{toDateInputValue(selectedShowtime.startTime)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Starts</span>
+                <span className="font-medium text-slate-900">{formatDateTime(selectedShowtime.startTime)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Ends</span>
+                <span className="font-medium text-slate-900">{formatDateTime(selectedShowtime.endTime)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-slate-500">Price</span>
+                <span className="font-medium text-slate-900">{formatCurrency(selectedShowtime.price)}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Room readiness</p>
+              <p className="mt-2 text-sm text-slate-600">
+                {selectedShowtime.room._count?.seats || selectedShowtime.room.totalSeats
+                  ? 'Room is attached to the cinema and can be scheduled.'
+                  : 'Room has no seats configured yet.'}
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };
