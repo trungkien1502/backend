@@ -1,6 +1,7 @@
 const paymentService = require("./paymentService");
 
 exports.createMomoPayment = async (req, res) => {
+    console.log("🔥 MOMO CREATE RESPONSE:", data);
     try {
         const { userId, showtimeId, seatIds } = req.body;
 
