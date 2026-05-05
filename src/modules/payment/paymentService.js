@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const prisma = require("../../config/prisma");
 
 const MOMO_CREATE_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create";
-const PAYMENT_HOLD_MINUTES = Number(process.env.PAYMENT_HOLD_MINUTES || 10);
+const PAYMENT_HOLD_MINUTES = Number(process.env.PAYMENT_HOLD_MINUTES || 5);
 
 const normalizeNumberArray = (value) => {
     if (!Array.isArray(value)) return [];
