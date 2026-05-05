@@ -1,15 +1,17 @@
 const paymentService = require("./paymentService");
 
 exports.createMomoPayment = async (req, res) => {
-    console.log("🔥 MOMO CREATE RESPONSE:", data);
+
     try {
         const { userId, showtimeId, seatIds } = req.body;
+
 
         const data = await paymentService.createMomoPayment({
             userId: req.userId || userId,
             showtimeId,
             seatIds
         });
+        console.log("🔥 MOMO CREATE RESPONSE:", data);
 
         res.json({
             message: "MoMo payment created",
@@ -19,6 +21,7 @@ exports.createMomoPayment = async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 };
+
 
 exports.handleMomoIpn = async (req, res) => {
     console.log("🔥 FULL IPN BODY:", JSON.stringify(req.body, null, 2));
