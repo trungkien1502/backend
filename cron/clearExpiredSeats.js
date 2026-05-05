@@ -6,22 +6,76 @@ cron.schedule("* * * * *", async () => {
     try {
         const now = new Date();
 
-        const result = await prisma.showtimeSeat.updateMany({
+        const expiredSeats = await prisma.showtimeSeat.findMany({
             where: {
                 status: "HOLD",
                 holdUntil: {
                     lt: now
                 }
             },
-            data: {
-                status: "AVAILABLE",
-                holdUntil: null,
-                heldBy: null
+            select: {
+                id: true,
+                bookingSeats: {
+                    where: {
+                        booking: {
+                            status: "PENDING"
+                        }
+                    },
+                    select: {
+                        bookingId: true
+                    }
+                }
             }
         });
 
-        if (result.count > 0) {
-            console.log(`Cleared ${result.count} expired seats`);
+        if (!expiredSeats.length) return;
+
+        const expiredSeatIds = expiredSeats.map((seat) => seat.id);
+        const pendingBookingIds = [
+            ...new Set(expiredSeats.flatMap((seat) => seat.bookingSeats.map((bookingSeat) => bookingSeat.bookingId)))
+        ];
+
+        await prisma.$transaction(async (tx) => {
+            if (pendingBookingIds.length) {
+                await tx.payment.updateMany({
+                    where: {
+                        bookingId: { in: pendingBookingIds },
+                        status: "PENDING"
+                    },
+                    data: {
+                        status: "CANCELLED"
+                    }
+                });
+
+                await tx.booking.updateMany({
+                    where: {
+                        id: { in: pendingBookingIds },
+                        status: "PENDING"
+                    },
+                    data: {
+                        status: "CANCELLED"
+                    }
+                });
+            }
+
+            await tx.showtimeSeat.updateMany({
+                where: {
+                    id: { in: expiredSeatIds },
+                    status: "HOLD",
+                    holdUntil: {
+                        lt: now
+                    }
+                },
+                data: {
+                    status: "AVAILABLE",
+                    holdUntil: null,
+                    heldBy: null
+                }
+            });
+        });
+
+        if (expiredSeatIds.length > 0) {
+            console.log(`Cleared ${expiredSeatIds.length} expired seats and cancelled ${pendingBookingIds.length} pending bookings`);
         }
 
     } catch (error) {
