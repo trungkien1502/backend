@@ -55,16 +55,25 @@ const CINEMAS = [
 
 const DEMO_USERS = [
   {
+    name: "Cinema Admin",
+    email: "admin@example.com",
+    phone: "0900000000",
+    gender: "other",
+    role: "ADMIN",
+  },
+  {
     name: "Nguyen Van Test",
     email: "test1@example.com",
     phone: "0900000001",
     gender: "male",
+    role: "CUSTOMER",
   },
   {
     name: "Tran Thi Demo",
     email: "test2@example.com",
     phone: "0900000002",
     gender: "female",
+    role: "CUSTOMER",
   },
 ];
 
@@ -183,6 +192,7 @@ async function ensureDemoUsers() {
           name: userData.name,
           phone: userData.phone,
           gender: userData.gender,
+          role: userData.role,
           password: existing.password || passwordHash,
         },
       });
@@ -453,11 +463,11 @@ async function seedOperationalData() {
   });
 
   if (firstShowtime) {
-    await seedSampleBooking(users[0], firstShowtime);
+    await seedSampleBooking(users[1], firstShowtime);
   }
 
   if (secondShowtime) {
-    await seedHoldSeats(users[1], secondShowtime);
+    await seedHoldSeats(users[2], secondShowtime);
   }
 
   const summary = await Promise.all([
@@ -474,8 +484,9 @@ async function seedOperationalData() {
   console.log(
     `Cinema: ${summary[0]}, Room: ${summary[1]}, Seat: ${summary[2]}, Showtime: ${summary[3]}, ShowtimeSeat: ${summary[4]}, User: ${summary[5]}, Booking: ${summary[6]}`
   );
-  console.log(`Tai khoan test: ${DEMO_USERS[0].email} / ${DEMO_PASSWORD}`);
+  console.log(`Tai khoan admin: ${DEMO_USERS[0].email} / ${DEMO_PASSWORD}`);
   console.log(`Tai khoan test: ${DEMO_USERS[1].email} / ${DEMO_PASSWORD}`);
+  console.log(`Tai khoan test: ${DEMO_USERS[2].email} / ${DEMO_PASSWORD}`);
   console.log(`Showtime da tao trong lan nay: ${showtimes.length}`);
 }
 

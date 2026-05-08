@@ -15,10 +15,16 @@ model User {
   phone     String?
   gender    String?
   birthDate DateTime?
+  role      UserRole @default(CUSTOMER)
   createdAt DateTime @default(now())
 
   bookings      Booking[]
   PasswordReset PasswordReset[]
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
 }
 
 model PasswordReset {

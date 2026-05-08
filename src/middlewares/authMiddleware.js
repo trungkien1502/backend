@@ -26,6 +26,7 @@ function authMiddleware(req, res, next) {
 
         // lưu userId vào request
         req.userId = decoded.userId;
+        req.userRole = decoded.role;
 
         next();
 

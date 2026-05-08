@@ -49,6 +49,10 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Invalid response format');
       }
 
+      if (nextUser.role !== 'ADMIN') {
+        throw new Error('This account does not have admin access');
+      }
+
       localStorage.setItem('token', nextToken);
       localStorage.setItem('user', JSON.stringify(nextUser));
 

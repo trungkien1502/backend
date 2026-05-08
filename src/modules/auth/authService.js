@@ -43,7 +43,7 @@ exports.login = async (email, password) => {
     }
 
     const token = jwt.sign(
-        { userId: user.id },
+        { userId: user.id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
     );
@@ -53,7 +53,8 @@ exports.login = async (email, password) => {
         user: {
             id: user.id,
             name: user.name,
-            email: user.email
+            email: user.email,
+            role: user.role
         }
     };
 };
@@ -68,7 +69,8 @@ exports.getCurrentUser = async (userId) => {
             email: true,
             phone: true,
             gender: true,
-            birthDate: true
+            birthDate: true,
+            role: true
         }
     });
 
