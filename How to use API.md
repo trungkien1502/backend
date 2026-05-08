@@ -6,6 +6,21 @@
 
 ## 2. Auth
 
+### Roles
+
+User có 2 role:
+
+- `CUSTOMER`: user thường, dùng app/mobile để xem phim, giữ ghế, đặt vé, thanh toán
+- `ADMIN`: được đăng nhập admin web và gọi các API quản trị
+
+Các API quản trị yêu cầu JWT token của user có `role = ADMIN`. Nếu user thường gọi các API này, backend trả `403 Admin only`.
+
+Tài khoản admin mặc định khi chạy `node scripts/seedTestData.js`:
+
+```txt
+admin@example.com / 123456
+```
+
 ### POST `/api/auth/register`
 
 Tạo tài khoản user mới.
@@ -32,6 +47,7 @@ Tạo tài khoản user mới.
     "email": "user1@example.com",
     "phone": "0912345678",
     "password": "$2b$10$exampleHashedPassword",
+    "role": "CUSTOMER",
     "createdAt": "2026-04-21T10:00:00.000Z"
   }
 }
@@ -66,7 +82,8 @@ Tạo tài khoản user mới.
   "user": {
     "id": 1,
     "name": "Nguyen Van A",
-    "email": "user1@example.com"
+    "email": "user1@example.com",
+    "role": "CUSTOMER"
   }
 }
 ```
@@ -86,7 +103,8 @@ Lấy thông tin user hiện tại.
   "email": "user1@example.com",
   "phone": "0912345678",
   "gender": null,
-  "birthDate": null
+  "birthDate": null,
+  "role": "CUSTOMER"
 }
 ```
 
@@ -205,6 +223,8 @@ Lấy chi tiết 1 rạp.
 
 Tạo rạp mới.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -229,6 +249,8 @@ Tạo rạp mới.
 
 Sửa rạp.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -241,6 +263,8 @@ Sửa rạp.
 ### DELETE `/api/cinemas/:id`
 
 Xóa rạp.
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -322,6 +346,8 @@ Lấy chi tiết phim và cast.
 
 Tạo phim.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -342,6 +368,8 @@ Tạo phim.
 
 Sửa phim.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -357,6 +385,8 @@ Sửa phim.
 ```
 
 ### DELETE `/api/movies/:id`
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -410,6 +440,8 @@ Lấy chi tiết phòng.
 
 Tạo phòng.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -428,6 +460,8 @@ Schema hiện tại không có field `capacity`, nhưng service vẫn nhận fie
 ### PUT `/api/rooms/:id`
 
 Sửa phòng.
+
+**Auth:** `Bearer ADMIN token`
 
 **Body**
 
@@ -453,6 +487,8 @@ Sửa phòng.
 ```
 
 ### DELETE `/api/rooms/:id`
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -502,6 +538,8 @@ Lấy toàn bộ ghế theo phòng.
 
 Tạo hàng loạt ghế cho 1 phòng.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -533,6 +571,8 @@ Ghế được tạo sẽ là `A1..A10`, `B1..B10`, ...
 
 Sửa tên ghế.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -544,6 +584,8 @@ Sửa tên ghế.
 ### DELETE `/api/seats/room/:roomId`
 
 Xóa toàn bộ ghế của 1 phòng.
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -607,6 +649,8 @@ Lấy chi tiết 1 suất chiếu.
 
 Tạo suất chiếu và tự động tạo `showtimeSeat`.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -629,6 +673,8 @@ Tạo suất chiếu và tự động tạo `showtimeSeat`.
 
 Sửa suất chiếu.
 
+**Auth:** `Bearer ADMIN token`
+
 **Body**
 
 ```json
@@ -644,6 +690,8 @@ Sửa suất chiếu.
 ### DELETE `/api/showtimes/:id`
 
 Xóa suất chiếu.
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -746,6 +794,57 @@ Nhả ghế đang giữ.
 ---
 
 ## 9. Bookings
+
+### GET `/api/bookings`
+
+Lấy danh sách tất cả booking cho admin web.
+
+**Auth:** `Bearer ADMIN token`
+
+**Query params**
+
+- `status`: `PENDING` | `CONFIRMED` | `CANCELLED`
+- `search`: tìm theo tên/email user hoặc tên phim
+
+**Response**
+
+```json
+{
+  "data": [
+    {
+      "id": 10,
+      "totalPrice": 270000,
+      "status": "CONFIRMED",
+      "createdAt": "2026-04-21T10:00:00.000Z",
+      "user": {
+        "id": 1,
+        "name": "Nguyen Van A",
+        "email": "user1@example.com"
+      },
+      "movie": {
+        "id": 1,
+        "title": "Avengers",
+        "poster": "https://example.com/poster.jpg"
+      },
+      "cinema": {
+        "id": 1,
+        "name": "CGV Landmark",
+        "location": "Binh Thanh"
+      },
+      "room": {
+        "id": 2,
+        "name": "Room 2"
+      },
+      "showtime": {
+        "startTime": "2026-04-21T12:00:00.000Z",
+        "endTime": "2026-04-21T14:00:00.000Z"
+      },
+      "seats": ["A1", "A2"],
+      "payment": null
+    }
+  ]
+}
+```
 
 ### POST `/api/bookings`
 
@@ -864,6 +963,8 @@ API này hiện trả `data` là array, dù tìm theo 1 `id`.
 ### POST `/api/bookings/:id/cancel`
 
 Hủy booking.
+
+**Auth:** `Bearer ADMIN token`
 
 **Response**
 
@@ -1247,6 +1348,16 @@ hoặc
 }
 ```
 
+### 403 Forbidden
+
+Khi user thường gọi API chỉ dành cho admin:
+
+```json
+{
+  "message": "Admin only"
+}
+```
+
 ### 404 Not Found
 
 ```json
@@ -1259,6 +1370,13 @@ hoặc
 ---
 
 ## 12. Suggested Client Flow
+
+Luồng đăng nhập admin web:
+
+1. `POST /api/auth/login`
+2. Kiểm tra `user.role === "ADMIN"`
+3. Gọi các API quản trị với header `Authorization: Bearer <token>`
+4. Nếu backend trả `403 Admin only`, tài khoản không có quyền admin
 
 Luồng đặt vé trực tiếp, không dùng MoMo:
 
