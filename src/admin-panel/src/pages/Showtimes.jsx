@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { CalendarRange, Edit3, Plus, RefreshCcw, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
+import { Edit3, Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { Alert, Button, Card, DataToolbar, EmptyState, Input, MetricPill, Modal, Select } from '../components/common';
 import { cinemaAPI, extractError, movieAPI, roomAPI, showtimeAPI } from '../services/api';
 import { formatCurrency, formatDateTime, toDateInputValue, toDateTimeLocalValue } from '../utils/formatters';
 
@@ -191,6 +191,11 @@ export const ShowtimesPage = () => {
       label: `${room.name} (${room._count?.seats || 0}/${room.totalSeats} seats)`,
     }))
   );
+  const now = new Date();
+  const upcomingCount = showtimes.filter((showtime) => new Date(showtime.startTime) >= now).length;
+  const averagePrice = showtimes.length
+    ? showtimes.reduce((sum, showtime) => sum + Number(showtime.price || 0), 0) / showtimes.length
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -224,9 +229,15 @@ export const ShowtimesPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <MetricPill label="Showtimes" value={showtimes.length} tone="sky" />
+        <MetricPill label="Upcoming" value={upcomingCount} tone="emerald" />
+        <MetricPill label="Avg price" value={formatCurrency(averagePrice)} tone="amber" />
+      </div>
+
       <div className="grid gap-6">
-        <Card title="Showtime list">
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <Card title="Schedule Board" action={<span className="text-xs font-medium text-slate-500">{showtimes.length} slots</span>}>
+          <DataToolbar columns="three" summary={loading ? 'Loading...' : `${showtimes.length} matching slots`}>
             <Select
               label="Movie"
               options={movieOptions}
@@ -245,38 +256,38 @@ export const ShowtimesPage = () => {
               value={filters.date}
               onChange={(event) => setFilters({ ...filters, date: event.target.value })}
             />
-          </div>
+          </DataToolbar>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500">
+              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Movie</th>
-                  <th className="pb-3 pr-4 font-medium">Cinema</th>
-                  <th className="pb-3 pr-4 font-medium">Room</th>
-                  <th className="pb-3 pr-4 font-medium">Start</th>
-                  <th className="pb-3 pr-4 font-medium">End</th>
-                  <th className="pb-3 pr-4 font-medium">Price</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-semibold">Movie</th>
+                  <th className="px-3 py-3 font-semibold">Cinema</th>
+                  <th className="px-3 py-3 font-semibold">Room</th>
+                  <th className="px-3 py-3 font-semibold">Start</th>
+                  <th className="px-3 py-3 font-semibold">End</th>
+                  <th className="px-3 py-3 font-semibold">Price</th>
+                  <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {showtimes.map((showtime) => (
                   <tr
                     key={showtime.id}
-                    className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 align-middle last:border-b-0 ${
                       selectedShowtime?.id === showtime.id ? 'bg-amber-50/60' : 'hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedShowtime(showtime)}
                   >
-                    <td className="py-4 pr-4 font-medium text-slate-900">{showtime.movie.title}</td>
-                    <td className="py-4 pr-4 text-slate-600">{showtime.room.cinema.name}</td>
-                    <td className="py-4 pr-4 text-slate-600">{showtime.room.name}</td>
-                    <td className="py-4 pr-4 text-slate-600">{formatDateTime(showtime.startTime)}</td>
-                    <td className="py-4 pr-4 text-slate-600">{formatDateTime(showtime.endTime)}</td>
-                    <td className="py-4 pr-4 text-slate-600">{formatCurrency(showtime.price)}</td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
+                    <td className="px-3 py-4 font-medium text-slate-900">{showtime.movie.title}</td>
+                    <td className="px-3 py-4 text-slate-600">{showtime.room.cinema.name}</td>
+                    <td className="px-3 py-4 text-slate-600">{showtime.room.name}</td>
+                    <td className="px-3 py-4 text-slate-600">{formatDateTime(showtime.startTime)}</td>
+                    <td className="px-3 py-4 text-slate-600">{formatDateTime(showtime.endTime)}</td>
+                    <td className="px-3 py-4 text-slate-600">{formatCurrency(showtime.price)}</td>
+                    <td className="px-3 py-4">
+                      <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -290,7 +301,8 @@ export const ShowtimesPage = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="outline"
+                          className="text-rose-700 hover:border-rose-200 hover:bg-rose-50"
                           onClick={(event) => {
                             event.stopPropagation();
                             handleDelete(showtime.id);
@@ -307,7 +319,9 @@ export const ShowtimesPage = () => {
             </table>
           </div>
 
-          {!showtimes.length && !loading ? <p className="mt-6 text-sm text-slate-500">No showtimes found.</p> : null}
+          {!showtimes.length && !loading ? (
+            <EmptyState title="No showtimes found" description="Try changing filters or create a new schedule slot." />
+          ) : null}
         </Card>
 
       </div>

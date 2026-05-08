@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Edit3, Film, Plus, RefreshCcw, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
+import { Calendar, Clock, Edit3, Film, Plus, RefreshCcw, Star, Trash2 } from 'lucide-react';
+import { Alert, Button, Card, DataToolbar, EmptyState, MetricPill, Modal, Select, StatusBadge, Input } from '../components/common';
 import { extractError, movieAPI } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import {
   formatDate,
-  formatDateTime,
   formatRuntime,
   toDateInputValue,
   truncate,
@@ -30,16 +29,16 @@ const movieFormDefaults = {
   status: 'COMING_SOON',
 };
 
-const badgeClass = (status) => {
+const statusTone = (status) => {
   switch (status) {
     case 'NOW_SHOWING':
-      return 'bg-emerald-50 text-emerald-700';
+      return 'emerald';
     case 'COMING_SOON':
-      return 'bg-amber-50 text-amber-700';
+      return 'amber';
     case 'ENDED':
-      return 'bg-slate-100 text-slate-700';
+      return 'slate';
     default:
-      return 'bg-slate-100 text-slate-700';
+      return 'slate';
   }
 };
 
@@ -206,6 +205,9 @@ export const MoviesPage = () => {
   const selectedGenres = selectedMovie?.genres?.map((item) => item.genre.name) || [];
   const selectedDirectors = selectedMovie?.people?.filter((item) => item.role === 'DIRECTOR') || [];
   const selectedCast = selectedMovie?.people?.filter((item) => item.role === 'CAST') || [];
+  const nowShowingCount = movies.filter((movie) => movie.status === 'NOW_SHOWING').length;
+  const comingSoonCount = movies.filter((movie) => movie.status === 'COMING_SOON').length;
+  const endedCount = movies.filter((movie) => movie.status === 'ENDED').length;
   const visibleMovies = movies.filter((movie) => {
     const keyword = debouncedSearch.trim().toLowerCase();
 
@@ -242,9 +244,16 @@ export const MoviesPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
+      <div className="grid gap-3 md:grid-cols-4">
+        <MetricPill label="Total movies" value={movies.length} tone="sky" />
+        <MetricPill label="Now showing" value={nowShowingCount} tone="emerald" />
+        <MetricPill label="Coming soon" value={comingSoonCount} tone="amber" />
+        <MetricPill label="Ended" value={endedCount} tone="slate" />
+      </div>
+
       <div className="grid gap-6">
-        <Card title="Movie list">
-          <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+        <Card title="Movie Catalog" action={<span className="text-xs font-medium text-slate-500">{visibleMovies.length} visible</span>}>
+          <DataToolbar summary={loading ? 'Loading...' : `${visibleMovies.length} matching movies`}>
             <Input
               label="Search"
               value={filters.search}
@@ -257,50 +266,53 @@ export const MoviesPage = () => {
               value={filters.status}
               onChange={(event) => setFilters({ ...filters, status: event.target.value })}
             />
-          </div>
+          </DataToolbar>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Title</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 pr-4 font-medium">Genres</th>
-                  <th className="pb-3 pr-4 font-medium">Runtime</th>
-                  <th className="pb-3 pr-4 font-medium">Release</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-semibold">Title</th>
+                  <th className="px-3 py-3 font-semibold">Status</th>
+                  <th className="px-3 py-3 font-semibold">Genres</th>
+                  <th className="px-3 py-3 font-semibold">Runtime</th>
+                  <th className="px-3 py-3 font-semibold">Release</th>
+                  <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleMovies.map((movie) => (
                   <tr
                     key={movie.id}
-                    className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 align-middle last:border-b-0 ${
                       selectedMovie?.id === movie.id ? 'bg-amber-50/60' : 'hover:bg-slate-50'
                     }`}
                     onClick={() => loadMovieDetail(movie.id)}
                   >
-                    <td className="py-4 pr-4">
+                    <td className="px-3 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                          <Film size={16} />
-                        </div>
-                        <div>
+                        {movie.poster ? (
+                          <img src={movie.poster} alt="" className="h-16 w-11 shrink-0 rounded-md object-cover shadow-sm" />
+                        ) : (
+                          <div className="inline-flex h-16 w-11 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+                            <Film size={16} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
                           <p className="font-medium text-slate-900">{movie.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{truncate(movie.description, 72) || 'No description'}</p>
+                          <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">{truncate(movie.description, 120) || 'No description'}</p>
+                          <p className="mt-1 text-[11px] font-medium text-slate-400">TMDB {movie.tmdbId || '--'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 pr-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass(movie.status)}`}>
-                        {statusLabel(movie.status)}
-                      </span>
+                    <td className="px-3 py-4">
+                      <StatusBadge tone={statusTone(movie.status)}>{statusLabel(movie.status)}</StatusBadge>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{movie.genres?.join(', ') || '--'}</td>
-                    <td className="py-4 pr-4 text-slate-600">{formatRuntime(movie.duration)}</td>
-                    <td className="py-4 pr-4 text-slate-600">{formatDate(movie.releaseDate)}</td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
+                    <td className="px-3 py-4 text-slate-600">{movie.genres?.join(', ') || '--'}</td>
+                    <td className="px-3 py-4 text-slate-600">{formatRuntime(movie.duration)}</td>
+                    <td className="px-3 py-4 text-slate-600">{formatDate(movie.releaseDate)}</td>
+                    <td className="px-3 py-4">
+                      <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -314,7 +326,8 @@ export const MoviesPage = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="outline"
+                          className="text-rose-700 hover:border-rose-200 hover:bg-rose-50"
                           onClick={(event) => {
                             event.stopPropagation();
                             handleDelete(movie.id);
@@ -331,7 +344,9 @@ export const MoviesPage = () => {
             </table>
           </div>
 
-          {!visibleMovies.length && !loading ? <p className="mt-6 text-sm text-slate-500">No movies found.</p> : null}
+          {!visibleMovies.length && !loading ? (
+            <EmptyState title="No movies found" description="Try clearing the search or choosing another status." />
+          ) : null}
         </Card>
 
       </div>
@@ -349,30 +364,65 @@ export const MoviesPage = () => {
         {detailLoading ? (
           <p className="text-sm text-slate-500">Loading movie detail...</p>
         ) : selectedMovie ? (
-          <div className="space-y-4 text-sm">
-            <p className="leading-6 text-slate-600">{selectedMovie.description || 'No description.'}</p>
+          <div className="space-y-5 text-sm">
+            <div className="grid gap-4 sm:grid-cols-[120px_minmax(0,1fr)]">
+              {selectedMovie.poster ? (
+                <img src={selectedMovie.poster} alt="" className="h-44 w-28 rounded-lg object-cover shadow-sm" />
+              ) : (
+                <div className="flex h-44 w-28 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                  <Film size={22} />
+                </div>
+              )}
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone={statusTone(selectedMovie.status)}>{statusLabel(selectedMovie.status)}</StatusBadge>
+                  <span className="inline-flex h-7 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-xs font-semibold text-slate-600">
+                    <Star size={13} />
+                    {selectedMovie.rating ?? '--'}
+                  </span>
+                </div>
+                <p className="mt-3 leading-6 text-slate-600">{selectedMovie.description || 'No description.'}</p>
+              </div>
+            </div>
 
-            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-500">Genres</span>
-                <span className="text-right font-medium text-slate-900">{selectedGenres.join(', ') || '--'}</span>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <Clock size={14} />
+                  Runtime
+                </div>
+                <p className="mt-2 font-semibold text-slate-900">{formatRuntime(selectedMovie.duration)}</p>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-500">Showtimes</span>
-                <span className="font-medium text-slate-900">{selectedMovie.showtimes?.length || 0}</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <Calendar size={14} />
+                  Release
+                </div>
+                <p className="mt-2 font-semibold text-slate-900">{formatDate(selectedMovie.releaseDate)}</p>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-slate-500">Created</span>
-                <span className="font-medium text-slate-900">{formatDateTime(selectedMovie.createdAt)}</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Showtimes</p>
+                <p className="mt-2 font-semibold text-slate-900">{selectedMovie.showtimes?.length || 0}</p>
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Directors</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Genres</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedGenres.length ? selectedGenres.map((genre) => (
+                  <span key={genre} className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    {genre}
+                  </span>
+                )) : <p className="text-sm text-slate-500">No genres attached.</p>}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Directors</p>
               <div className="space-y-2">
                 {selectedDirectors.length ? (
                   selectedDirectors.map((item) => (
-                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
+                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                       <p className="font-medium text-slate-900">{item.person.name}</p>
                       <p className="text-xs text-slate-500">{item.job || 'Director'}</p>
                     </div>
@@ -384,11 +434,11 @@ export const MoviesPage = () => {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Cast</p>
-              <div className="space-y-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Cast</p>
+              <div className="grid gap-2 sm:grid-cols-2">
                 {selectedCast.length ? (
                   selectedCast.map((item) => (
-                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 px-3 py-2">
+                    <div key={`${item.role}-${item.person.id}`} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                       <p className="font-medium text-slate-900">{item.person.name}</p>
                       <p className="text-xs text-slate-500">{item.character || 'No character name'}</p>
                     </div>

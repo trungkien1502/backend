@@ -9,7 +9,7 @@ export const Input = ({
   return (
     <div className="w-full">
       {label && (
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
           {label}
           {required && <span className="ml-1 text-rose-500">*</span>}
         </label>
@@ -17,7 +17,7 @@ export const Input = ({
       <input
         type={type}
         className={`
-          min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm shadow-slate-100
+          min-h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm shadow-slate-100
           placeholder:text-slate-400
           focus:border-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-100
           disabled:cursor-not-allowed disabled:bg-slate-100

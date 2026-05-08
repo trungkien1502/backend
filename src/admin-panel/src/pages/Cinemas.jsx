@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Building2, Edit3, MapPin, Plus, RefreshCcw, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Modal } from '../components/common';
+import { Alert, Button, Card, DataToolbar, EmptyState, Input, MetricPill, Modal } from '../components/common';
 import { cinemaAPI, extractError } from '../services/api';
 import { formatDateTime, truncate } from '../utils/formatters';
 
@@ -156,37 +156,43 @@ export const CinemasPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <MetricPill label="Venues" value={cinemas.length} tone="sky" />
+        <MetricPill label="Visible" value={visibleCinemas.length} tone="emerald" />
+        <MetricPill label="Mapped" value={cinemas.filter((cinema) => cinema.latitude || cinema.longitude).length} tone="amber" />
+      </div>
+
       <div className="grid gap-6">
-        <Card title="Cinema list">
-          <div className="mb-6">
+        <Card title="Cinema Directory" action={<span className="text-xs font-medium text-slate-500">{visibleCinemas.length} visible</span>}>
+          <DataToolbar columns="one" summary={loading ? 'Loading...' : `${visibleCinemas.length} matching venues`}>
             <Input
               label="Search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by cinema name or location"
             />
-          </div>
+          </DataToolbar>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500">
+              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Cinema</th>
-                  <th className="pb-3 pr-4 font-medium">Location</th>
-                  <th className="pb-3 pr-4 font-medium">Coordinates</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-semibold">Cinema</th>
+                  <th className="px-3 py-3 font-semibold">Location</th>
+                  <th className="px-3 py-3 font-semibold">Coordinates</th>
+                  <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleCinemas.map((cinema) => (
                   <tr
                     key={cinema.id}
-                    className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 align-middle last:border-b-0 ${
                       selectedCinema?.id === cinema.id ? 'bg-amber-50/60' : 'hover:bg-slate-50'
                     }`}
                     onClick={() => setSelectedCinema(cinema)}
                   >
-                    <td className="py-4 pr-4">
+                    <td className="px-3 py-4">
                       <div className="flex items-start gap-3">
                         <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                           <Building2 size={16} />
@@ -197,12 +203,12 @@ export const CinemasPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{truncate(cinema.location, 80) || '--'}</td>
-                    <td className="py-4 pr-4 text-slate-600">
+                    <td className="px-3 py-4 text-slate-600">{truncate(cinema.location, 80) || '--'}</td>
+                    <td className="px-3 py-4 text-slate-600">
                       {cinema.latitude || cinema.longitude ? `${cinema.latitude || '--'}, ${cinema.longitude || '--'}` : '--'}
                     </td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
+                    <td className="px-3 py-4">
+                      <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -216,7 +222,8 @@ export const CinemasPage = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="outline"
+                          className="text-rose-700 hover:border-rose-200 hover:bg-rose-50"
                           onClick={(event) => {
                             event.stopPropagation();
                             handleDelete(cinema.id);
@@ -233,7 +240,9 @@ export const CinemasPage = () => {
             </table>
           </div>
 
-          {!visibleCinemas.length && !loading ? <p className="mt-6 text-sm text-slate-500">No cinemas found.</p> : null}
+          {!visibleCinemas.length && !loading ? (
+            <EmptyState title="No cinemas found" description="Try changing the search term or create a new venue." />
+          ) : null}
         </Card>
 
       </div>

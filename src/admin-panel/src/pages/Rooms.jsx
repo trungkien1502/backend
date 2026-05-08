@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DoorOpen, Edit3, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
-import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
+import { Alert, Button, Card, DataToolbar, EmptyState, Input, MetricPill, Modal, Select } from '../components/common';
 import { cinemaAPI, extractError, roomAPI, seatAPI } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatDateTime } from '../utils/formatters';
@@ -232,6 +232,8 @@ export const RoomsPage = () => {
       label: cinema.name,
     }))
   );
+  const configuredRooms = rooms.filter((room) => (room._count?.seats || 0) > 0).length;
+  const seatTotal = rooms.reduce((sum, room) => sum + Number(room._count?.seats || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -259,9 +261,15 @@ export const RoomsPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <MetricPill label="Rooms" value={rooms.length} tone="sky" />
+        <MetricPill label="Configured" value={configuredRooms} tone="emerald" />
+        <MetricPill label="Seats" value={seatTotal} tone="amber" />
+      </div>
+
       <div className="grid gap-6">
-        <Card title="Room list">
-          <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+        <Card title="Room Inventory" action={<span className="text-xs font-medium text-slate-500">{rooms.length} rooms</span>}>
+          <DataToolbar summary={loading ? 'Loading...' : `${rooms.length} matching rooms`}>
             <Input
               label="Search"
               value={filters.search}
@@ -274,29 +282,29 @@ export const RoomsPage = () => {
               value={filters.cinemaId}
               onChange={(event) => setFilters({ ...filters, cinemaId: event.target.value })}
             />
-          </div>
+          </DataToolbar>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500">
+              <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Room</th>
-                  <th className="pb-3 pr-4 font-medium">Cinema</th>
-                  <th className="pb-3 pr-4 font-medium">Seat target</th>
-                  <th className="pb-3 pr-4 font-medium">Configured</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-semibold">Room</th>
+                  <th className="px-3 py-3 font-semibold">Cinema</th>
+                  <th className="px-3 py-3 font-semibold">Seat target</th>
+                  <th className="px-3 py-3 font-semibold">Configured</th>
+                  <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rooms.map((room) => (
                   <tr
                     key={room.id}
-                    className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
+                    className={`cursor-pointer border-b border-slate-100 align-middle last:border-b-0 ${
                       selectedRoom?.id === room.id ? 'bg-amber-50/60' : 'hover:bg-slate-50'
                     }`}
                     onClick={() => selectRoom(room)}
                   >
-                    <td className="py-4 pr-4">
+                    <td className="px-3 py-4">
                       <div className="flex items-start gap-3">
                         <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                           <DoorOpen size={16} />
@@ -307,11 +315,11 @@ export const RoomsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{room.cinema?.name || `Cinema #${room.cinemaId}`}</td>
-                    <td className="py-4 pr-4 text-slate-600">{room.totalSeats}</td>
-                    <td className="py-4 pr-4 text-slate-600">{room._count?.seats || 0}</td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
+                    <td className="px-3 py-4 text-slate-600">{room.cinema?.name || `Cinema #${room.cinemaId}`}</td>
+                    <td className="px-3 py-4 text-slate-600">{room.totalSeats}</td>
+                    <td className="px-3 py-4 text-slate-600">{room._count?.seats || 0}</td>
+                    <td className="px-3 py-4">
+                      <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -325,7 +333,8 @@ export const RoomsPage = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="outline"
+                          className="text-rose-700 hover:border-rose-200 hover:bg-rose-50"
                           onClick={(event) => {
                             event.stopPropagation();
                             handleDeleteRoom(room.id);
@@ -342,7 +351,9 @@ export const RoomsPage = () => {
             </table>
           </div>
 
-          {!rooms.length && !loading ? <p className="mt-6 text-sm text-slate-500">No rooms found.</p> : null}
+          {!rooms.length && !loading ? (
+            <EmptyState title="No rooms found" description="Try another cinema filter or create a new room." />
+          ) : null}
         </Card>
 
       </div>

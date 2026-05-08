@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Ban, RefreshCcw, Ticket } from 'lucide-react';
-import { Alert, Button, Card, Input, Modal, Select } from '../components/common';
+import { Ban, CreditCard, RefreshCcw, Ticket } from 'lucide-react';
+import { Alert, Button, Card, DataToolbar, EmptyState, MetricPill, Modal, Select, StatusBadge, Input } from '../components/common';
 import { bookingAPI, extractError } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
@@ -12,16 +12,16 @@ const statusOptions = [
   { value: 'PENDING', label: 'Pending' },
 ];
 
-const badgeClass = (status) => {
+const statusTone = (status) => {
   switch (status) {
     case 'CONFIRMED':
-      return 'bg-emerald-50 text-emerald-700';
+      return 'emerald';
     case 'CANCELLED':
-      return 'bg-rose-50 text-rose-700';
+      return 'rose';
     case 'PENDING':
-      return 'bg-amber-50 text-amber-700';
+      return 'amber';
     default:
-      return 'bg-slate-100 text-slate-700';
+      return 'slate';
   }
 };
 
@@ -32,6 +32,12 @@ export const BookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const debouncedSearch = useDebouncedValue(filters.search, 300);
+  const confirmedCount = bookings.filter((booking) => booking.status === 'CONFIRMED').length;
+  const pendingCount = bookings.filter((booking) => booking.status === 'PENDING').length;
+  const cancelledCount = bookings.filter((booking) => booking.status === 'CANCELLED').length;
+  const confirmedRevenue = bookings
+    .filter((booking) => booking.status === 'CONFIRMED')
+    .reduce((sum, booking) => sum + Number(booking.totalPrice || 0), 0);
 
   useEffect(() => {
     fetchBookings();
@@ -90,9 +96,16 @@ export const BookingsPage = () => {
         <Alert type={message.type} message={message.text} onClose={() => setMessage({ type: '', text: '' })} />
       ) : null}
 
+      <div className="grid gap-3 md:grid-cols-4">
+        <MetricPill label="Confirmed" value={confirmedCount} tone="emerald" />
+        <MetricPill label="Pending" value={pendingCount} tone="amber" />
+        <MetricPill label="Cancelled" value={cancelledCount} tone="rose" />
+        <MetricPill label="Revenue" value={formatCurrency(confirmedRevenue)} tone="sky" />
+      </div>
+
       <div className="grid gap-6">
-        <Card title="Booking list">
-          <div className="mb-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+        <Card title="Booking Queue" action={<span className="text-xs font-medium text-slate-500">{bookings.length} records</span>}>
+          <DataToolbar summary={loading ? 'Loading...' : `${bookings.length} matching bookings`}>
             <Input
               label="Search"
               value={filters.search}
@@ -105,52 +118,63 @@ export const BookingsPage = () => {
               value={filters.status}
               onChange={(event) => setFilters({ ...filters, status: event.target.value })}
             />
-          </div>
+          </DataToolbar>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500">
+            <table className="w-full min-w-[920px] text-sm">
+              <thead className="border-b border-slate-200 bg-white text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="pb-3 pr-4 font-medium">Customer</th>
-                  <th className="pb-3 pr-4 font-medium">Movie</th>
-                  <th className="pb-3 pr-4 font-medium">Venue</th>
-                  <th className="pb-3 pr-4 font-medium">Showtime</th>
-                  <th className="pb-3 pr-4 font-medium">Seats</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 pr-4 font-medium">Total</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-semibold">Customer</th>
+                  <th className="px-3 py-3 font-semibold">Screening</th>
+                  <th className="px-3 py-3 font-semibold">Seats</th>
+                  <th className="px-3 py-3 font-semibold">Payment</th>
+                  <th className="px-3 py-3 font-semibold">Status</th>
+                  <th className="px-3 py-3 text-right font-semibold">Total</th>
+                  <th className="px-3 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {bookings.map((booking) => (
                   <tr
                     key={booking.id}
-                    className={`cursor-pointer border-b border-slate-100 align-top last:border-b-0 ${
-                      selectedBooking?.id === booking.id ? 'bg-amber-50/60' : 'hover:bg-slate-50'
+                    className={`cursor-pointer border-b border-slate-100 align-middle last:border-b-0 ${
+                      selectedBooking?.id === booking.id ? 'bg-amber-50/70' : 'hover:bg-slate-50/80'
                     }`}
                     onClick={() => setSelectedBooking(booking)}
                   >
-                    <td className="py-4 pr-4">
+                    <td className="px-3 py-4">
                       <p className="font-medium text-slate-900">{booking.user?.name || `User #${booking.user?.id || '--'}`}</p>
                       <p className="mt-1 text-xs text-slate-500">{booking.user?.email || '--'}</p>
+                      <p className="mt-1 text-[11px] font-medium text-slate-400">#{booking.id}</p>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{booking.movie.title}</td>
-                    <td className="py-4 pr-4 text-slate-600">
-                      {booking.cinema.name} · {booking.room.name}
+                    <td className="px-3 py-4">
+                      <p className="font-medium text-slate-900">{booking.movie.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">{booking.cinema.name} · {booking.room.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{formatDateTime(booking.showtime.startTime)}</p>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{formatDateTime(booking.showtime.startTime)}</td>
-                    <td className="py-4 pr-4 text-slate-600">{booking.seats.join(', ')}</td>
-                    <td className="py-4 pr-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass(booking.status)}`}>
-                        {booking.status}
-                      </span>
+                    <td className="px-3 py-4">
+                      <div className="flex max-w-[170px] flex-wrap gap-1.5">
+                        {booking.seats.map((seat) => (
+                          <span key={seat} className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700">
+                            {seat}
+                          </span>
+                        ))}
+                      </div>
                     </td>
-                    <td className="py-4 pr-4 text-slate-600">{formatCurrency(booking.totalPrice)}</td>
-                    <td className="py-4">
+                    <td className="px-3 py-4">
+                      <p className="text-sm font-medium text-slate-700">{booking.payment?.status || 'No payment'}</p>
+                      <p className="mt-1 text-xs text-slate-500">{booking.payment?.provider || '--'}</p>
+                    </td>
+                    <td className="px-3 py-4">
+                      <StatusBadge tone={statusTone(booking.status)}>{booking.status}</StatusBadge>
+                    </td>
+                    <td className="px-3 py-4 text-right font-semibold text-slate-900">{formatCurrency(booking.totalPrice)}</td>
+                    <td className="px-3 py-4 text-right">
                       {booking.status !== 'CANCELLED' ? (
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="outline"
+                          className="text-rose-700 hover:border-rose-200 hover:bg-rose-50"
                           onClick={(event) => {
                             event.stopPropagation();
                             handleCancel(booking.id);
@@ -160,7 +184,7 @@ export const BookingsPage = () => {
                           Cancel
                         </Button>
                       ) : (
-                        <span className="text-xs text-slate-400">Already cancelled</span>
+                        <span className="text-xs font-medium text-slate-400">No action</span>
                       )}
                     </td>
                   </tr>
@@ -169,7 +193,9 @@ export const BookingsPage = () => {
             </table>
           </div>
 
-          {!bookings.length && !loading ? <p className="mt-6 text-sm text-slate-500">No bookings found.</p> : null}
+          {!bookings.length && !loading ? (
+            <EmptyState title="No bookings found" description="Try a different search term or status filter." />
+          ) : null}
         </Card>
       </div>
 
@@ -191,7 +217,25 @@ export const BookingsPage = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <CreditCard size={14} />
+                  Payment
+                </div>
+                <p className="mt-3 text-sm font-semibold text-slate-900">{selectedBooking.payment?.status || 'No payment'}</p>
+                <p className="mt-1 text-xs text-slate-500">{selectedBooking.payment?.orderId || 'No order id'}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking status</p>
+                <div className="mt-3">
+                  <StatusBadge tone={statusTone(selectedBooking.status)}>{selectedBooking.status}</StatusBadge>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{formatCurrency(selectedBooking.totalPrice)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-slate-500">Movie</span>
                 <span className="text-right font-medium text-slate-900">{selectedBooking.movie.title}</span>
@@ -209,12 +253,6 @@ export const BookingsPage = () => {
               <div className="mt-2 flex items-center justify-between gap-4">
                 <span className="text-slate-500">Total</span>
                 <span className="text-right font-medium text-slate-900">{formatCurrency(selectedBooking.totalPrice)}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-4">
-                <span className="text-slate-500">Status</span>
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass(selectedBooking.status)}`}>
-                  {selectedBooking.status}
-                </span>
               </div>
             </div>
 
