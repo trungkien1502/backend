@@ -14,6 +14,15 @@ const signRaw = (raw, secretKey) => {
     return crypto.createHmac("sha256", secretKey).update(raw).digest("hex");
 };
 
+const isHttpUrl = (value) => {
+    try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+        return false;
+    }
+};
+
 const getMomoConfig = () => {
     const config = {
         endpoint: process.env.MOMO_ENDPOINT || MOMO_CREATE_ENDPOINT,
@@ -30,6 +39,22 @@ const getMomoConfig = () => {
 
     if (missing.length) {
         throw new Error(`Missing MoMo config: ${missing.join(", ")}`);
+    }
+
+    if (!isHttpUrl(config.redirectUrl)) {
+        throw new Error(
+            "MOMO_REDIRECT_URL must be a backend http(s) URL, for example https://your-domain.com/api/payments/momo/return. Use APP_PAYMENT_RETURN_URL for the app deeplink."
+        );
+    }
+
+    if (!isHttpUrl(config.ipnUrl)) {
+        throw new Error(
+            "MOMO_IPN_URL must be a public backend http(s) URL, for example https://your-domain.com/api/payments/momo/ipn."
+        );
+    }
+
+    if (process.env.APP_PAYMENT_RETURN_URL && process.env.APP_PAYMENT_RETURN_URL === config.redirectUrl) {
+        throw new Error("APP_PAYMENT_RETURN_URL must be different from MOMO_REDIRECT_URL.");
     }
 
     return config;

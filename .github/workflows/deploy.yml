@@ -34,12 +34,16 @@ jobs:
           MOMO_SECRET_KEY: ${{ secrets.MOMO_SECRET_KEY }}
           MOMO_IPN_URL: ${{ secrets.MOMO_IPN_URL }}
           MOMO_REDIRECT_URL: ${{ secrets.MOMO_REDIRECT_URL }}
+          APP_PAYMENT_RETURN_URL: ${{ secrets.APP_PAYMENT_RETURN_URL || vars.APP_PAYMENT_RETURN_URL || '' }}
+          PAYMENT_HOLD_MINUTES: ${{ vars.PAYMENT_HOLD_MINUTES || secrets.PAYMENT_HOLD_MINUTES || '10' }}
+          MOMO_RETURN_WAIT_ATTEMPTS: ${{ vars.MOMO_RETURN_WAIT_ATTEMPTS || secrets.MOMO_RETURN_WAIT_ATTEMPTS || '6' }}
+          MOMO_RETURN_WAIT_DELAY_MS: ${{ vars.MOMO_RETURN_WAIT_DELAY_MS || secrets.MOMO_RETURN_WAIT_DELAY_MS || '500' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,BACKUP_DIR,RETENTION_DAYS,HEALTHCHECK_URL,DATABASE_URL,JWT_SECRET,FRONTEND_URL,MOMO_PARTNER_CODE,MOMO_ACCESS_KEY,MOMO_SECRET_KEY,MOMO_IPN_URL,MOMO_REDIRECT_URL
+          envs: APP_DIR,PM2_APP_NAME,BRANCH_NAME,RUN_DB_MIGRATIONS,BACKUP_DIR,RETENTION_DAYS,HEALTHCHECK_URL,DATABASE_URL,JWT_SECRET,FRONTEND_URL,MOMO_PARTNER_CODE,MOMO_ACCESS_KEY,MOMO_SECRET_KEY,MOMO_IPN_URL,MOMO_REDIRECT_URL,APP_PAYMENT_RETURN_URL,PAYMENT_HOLD_MINUTES,MOMO_RETURN_WAIT_ATTEMPTS,MOMO_RETURN_WAIT_DELAY_MS
           command_timeout: 30m
           script: |
             set -e
@@ -56,6 +60,7 @@ jobs:
             : "${MOMO_SECRET_KEY:?MOMO_SECRET_KEY secret is required}"
             : "${MOMO_IPN_URL:?MOMO_IPN_URL secret is required}"
             : "${MOMO_REDIRECT_URL:?MOMO_REDIRECT_URL secret is required}"
+            : "${APP_PAYMENT_RETURN_URL:?APP_PAYMENT_RETURN_URL secret is required}"
             {
               printf '%s\n' "PORT=8080"
               printf '%s\n' "DATABASE_URL=$DATABASE_URL"
@@ -67,7 +72,10 @@ jobs:
               printf '%s\n' "MOMO_SECRET_KEY=$MOMO_SECRET_KEY"
               printf '%s\n' "MOMO_IPN_URL=$MOMO_IPN_URL"
               printf '%s\n' "MOMO_REDIRECT_URL=$MOMO_REDIRECT_URL"
-              printf '%s\n' "PAYMENT_HOLD_MINUTES=10"
+              printf '%s\n' "APP_PAYMENT_RETURN_URL=$APP_PAYMENT_RETURN_URL"
+              printf '%s\n' "PAYMENT_HOLD_MINUTES=$PAYMENT_HOLD_MINUTES"
+              printf '%s\n' "MOMO_RETURN_WAIT_ATTEMPTS=$MOMO_RETURN_WAIT_ATTEMPTS"
+              printf '%s\n' "MOMO_RETURN_WAIT_DELAY_MS=$MOMO_RETURN_WAIT_DELAY_MS"
             } > .env
 
             chmod +x scripts/deploy.sh

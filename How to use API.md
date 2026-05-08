@@ -910,16 +910,22 @@ MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create
 MOMO_PARTNER_CODE=your_partner_code
 MOMO_ACCESS_KEY=your_access_key
 MOMO_SECRET_KEY=your_secret_key
-MOMO_REDIRECT_URL=your_app_or_web_return_url
+MOMO_REDIRECT_URL=https://your-domain.com/api/payments/momo/return
 MOMO_IPN_URL=https://your-domain.com/api/payments/momo/ipn
+APP_PAYMENT_RETURN_URL=your_app_deeplink_or_app_link
 PAYMENT_HOLD_MINUTES=10
+MOMO_RETURN_WAIT_ATTEMPTS=6
+MOMO_RETURN_WAIT_DELAY_MS=500
 ```
 
 **Gợi ý cho mobile app**
 
 - Muốn bấm thanh toán và mở thẳng MoMo app thì frontend/mobile phải mở `deeplink`
 - `payUrl` là trang web thanh toán của MoMo, có thể dẫn đến trải nghiệm web/QR
-- `MOMO_REDIRECT_URL` nên là App Link / Universal Link / custom scheme của app, ví dụ `uitcinema://payment/momo-return`
+- `MOMO_REDIRECT_URL` nên trỏ về backend `/api/payments/momo/return` để backend cập nhật trạng thái trước khi mở lại app
+- `APP_PAYMENT_RETURN_URL` là deeplink/app link để backend redirect user về app sau khi cập nhật, ví dụ `uitcinema://payment/momo-return`
+- Backend sẽ báo lỗi khi `MOMO_REDIRECT_URL` hoặc `MOMO_IPN_URL` không phải URL `http(s)`, để tránh lỡ cấu hình deeplink app vào callback của MoMo
+- `MOMO_RETURN_WAIT_ATTEMPTS` và `MOMO_RETURN_WAIT_DELAY_MS` giúp `/momo/return` đợi IPN vài giây trước khi redirect về app, giảm trường hợp app đọc thấy `PENDING`
 - Dù có redirect về app, trạng thái thanh toán chuẩn vẫn nên lấy từ IPN và `GET /api/payments/order/:orderId`
 
 ### POST `/api/payments/momo/create`
@@ -1081,7 +1087,24 @@ Endpoint nhận redirect từ MoMo sau khi người dùng hoàn tất thanh toá
 GET /api/payments/momo/return?orderId=BOOKING_12_1777716000000&resultCode=0&message=Successful.
 ```
 
-**Response**
+**Redirect về app**
+
+Nếu có cấu hình `APP_PAYMENT_RETURN_URL`, backend xử lý cập nhật payment/booking trước rồi redirect về app:
+
+```http
+302 Found
+Location: uitcinema://payment/momo-return?orderId=BOOKING_12_1777716000000&paymentStatus=PAID&bookingId=12&bookingStatus=CONFIRMED&resultCode=0&message=Successful.
+```
+
+App nên lấy `orderId` từ deeplink rồi gọi `GET /api/payments/order/:orderId` để lấy trạng thái cuối.
+
+**JSON debug response**
+
+Nếu muốn xem JSON trên browser/Postman, thêm `format=json`:
+
+```http
+GET /api/payments/momo/return?orderId=BOOKING_12_1777716000000&resultCode=0&message=Successful.&format=json
+```
 
 ```json
 {
@@ -1102,8 +1125,8 @@ GET /api/payments/momo/return?orderId=BOOKING_12_1777716000000&resultCode=0&mess
 
 **Lưu ý**
 
-- API này trả JSON, phù hợp để debug hoặc dùng làm WebLink
-- Nếu muốn thanh toán xong quay về app đẹp hơn, đặt `MOMO_REDIRECT_URL` thành deeplink/app link của app thay vì endpoint này
+- API này trả JSON khi chưa cấu hình `APP_PAYMENT_RETURN_URL` hoặc khi có `format=json`
+- Không đặt `MOMO_REDIRECT_URL` trực tiếp thành deeplink app nếu backend cần xử lý return để cập nhật trạng thái
 - Redirect có thể đến trước hoặc sau IPN trong một số tình huống, nên app vẫn nên gọi `GET /api/payments/order/:orderId` để xác nhận trạng thái
 
 ### GET `/api/payments/order/:orderId`
