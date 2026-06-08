@@ -19,6 +19,7 @@ model User {
   createdAt DateTime @default(now())
 
   bookings      Booking[]
+  reviews       MovieReview[]
   PasswordReset PasswordReset[]
 }
 
@@ -55,6 +56,7 @@ model Movie {
   backdrop    String?
   releaseDate DateTime?
   rating      Float?
+  reviewCount Int      @default(0)
   status      MovieStatus @default(COMING_SOON)
   createdAt   DateTime @default(now())
 
@@ -63,6 +65,7 @@ model Movie {
   // New relations
   people   MoviePerson[]
   genres   MovieGenre[]
+  reviews  MovieReview[]
 }
 
 enum MoviePersonRole {
@@ -206,6 +209,7 @@ model Booking {
 
   bookingSeats BookingSeat[]
   payment      Payment?
+  reviews      MovieReview[]
 }
 
 model BookingSeat {
@@ -236,5 +240,31 @@ model Payment {
 
   booking Booking @relation(fields: [bookingId], references: [id])
 
+  @@index([status])
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+model MovieReview {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  movieId   Int
+  bookingId Int           @unique
+  rating    Int
+  content   String        @db.Text
+  spoiler   Boolean       @default(false)
+  status    ReviewStatus  @default(PUBLISHED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  movie   Movie   @relation(fields: [movieId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([movieId])
+  @@index([userId])
   @@index([status])
 }

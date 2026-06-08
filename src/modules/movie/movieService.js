@@ -131,7 +131,6 @@ exports.createMovie = async (data) => {
         duration: data.duration ? Number(data.duration) : null,
         poster: data.poster || null,
         backdrop: data.backdrop || null,
-        rating: data.rating ? Number(data.rating) : null,
         tmdbId: data.tmdbId ? Number(data.tmdbId) : null
     };
 
@@ -168,9 +167,6 @@ exports.updateMovie = async (id, data) => {
         ...(hasOwn(data, "description") && { description: data.description || null }),
         ...(hasOwn(data, "duration") && {
             duration: data.duration === "" || data.duration === null ? null : Number(data.duration)
-        }),
-        ...(hasOwn(data, "rating") && {
-            rating: data.rating === "" || data.rating === null ? null : Number(data.rating)
         }),
         ...(hasOwn(data, "poster") && { poster: data.poster || null }),
         ...(hasOwn(data, "backdrop") && { backdrop: data.backdrop || null }),

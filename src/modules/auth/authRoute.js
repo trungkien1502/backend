@@ -15,7 +15,8 @@ router.post("/resetpassword", authController.resetPassword);
 //router.post("/verifyotp", authController.verifyOTP);
 
 
+
 //admin db
-// router.delete("/",);
+//router.delete("/",);
 
 module.exports = router;

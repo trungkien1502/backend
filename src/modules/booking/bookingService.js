@@ -51,6 +51,17 @@ const bookingSelect = {
             }
         }
     },
+    reviews: {
+        select: {
+            id: true,
+            rating: true,
+            content: true,
+            spoiler: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true
+        }
+    },
     payment: {
         select: {
             id: true,
@@ -88,7 +99,18 @@ const mapBooking = (booking) => ({
             ...booking.payment,
             amount: Number(booking.payment.amount)
         }
-        : null
+        : null,
+    review: booking.reviews?.[0]
+        ? {
+            ...booking.reviews[0]
+        }
+        : null,
+    reviewed: Boolean(booking.reviews?.length),
+    canReview:
+        booking.status === "CONFIRMED"
+        && new Date(booking.showtime.endTime) <= new Date()
+        && !booking.reviews?.length,
+    reviewAvailableAt: booking.showtime.endTime
 });
 
 exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
@@ -208,14 +230,14 @@ exports.getAllBookings = async ({ status, search } = {}) => {
 };
 
 exports.getBookingById = async (id) => {
-    const bookings = await prisma.booking.findMany({
+    const booking = await prisma.booking.findUnique({
         where: { id: Number(id) },
-        orderBy: { createdAt: "desc" },
         select: bookingSelect
     });
 
+    if (!booking) return null;
 
-    return bookings.map(mapBooking);
+    return mapBooking(booking);
 };
 exports.cancelBooking = async (id) => {
     return await prisma.$transaction(async (tx) => {

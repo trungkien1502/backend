@@ -118,13 +118,12 @@ exports.forgotPassword = async (req, res) => {
     try {
 
 
-        const otp = await authService.forgotPassword(email);
+        await authService.forgotPassword(email);
 
 
         return res.json({
             sent: true,
-            otp // Include the generated OTP in the response
-            //message: "If the email exists, a reset code has been sent"
+            message: "If the email exists, a reset code has been sent"
         });
 
     } catch (error) {

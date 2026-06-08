@@ -1,6 +1,7 @@
 const prisma = require("../../config/prisma");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { sendPasswordResetEmail } = require("../../utils/mailer");
 
 exports.register = async (data) => {
 
@@ -129,7 +130,7 @@ exports.forgotPassword = async (email) => {
         }
     });
 
-    return otp; // sau này gửi email
+    await sendPasswordResetEmail(user.email, otp);
 };
 
 exports.resetPassword = async ({ email, code, newPassword }) => {

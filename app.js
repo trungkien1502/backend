@@ -49,6 +49,7 @@ const showtimeRoute = require("./src/modules/showtime/showtimeRoute");
 const showtimeseatRoute = require("./src/modules/showtimeseat/showtimeseatRoute");
 const bookingRoute = require("./src/modules/booking/bookingRoute");
 const paymentRoute = require("./src/modules/payment/paymentRoute");
+const reviewRoute = require("./src/modules/review/reviewRoute");
 
 app.get("/", (req, res) =>
 {
@@ -73,6 +74,7 @@ app.use("/api/showtimes", showtimeRoute);
 app.use("/api/showtimeseats", showtimeseatRoute);
 app.use("/api/bookings", bookingRoute);
 app.use("/api/payments", paymentRoute);
+app.use("/api/reviews", reviewRoute);
 
 // Giữ route cũ để tránh FE đang dùng bị vỡ.
 // Khi FE đổi hết sang /api/... thì có thể xóa phần này.
@@ -85,6 +87,7 @@ app.use("/showtimes", showtimeRoute);
 app.use("/showtimeseats", showtimeseatRoute);
 app.use("/bookings", bookingRoute);
 app.use("/payments", paymentRoute);
+app.use("/reviews", reviewRoute);
 
 app.use((req, res) =>
 {
