@@ -11,6 +11,10 @@ RETENTION_DAYS="${RETENTION_DAYS:-7}"
 HEALTHCHECK_URL="${HEALTHCHECK_URL:-}"
 SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 FORCE_CLEAN_WORKTREE="${FORCE_CLEAN_WORKTREE:-true}"
+DEPLOY_ADMIN_PANEL="${DEPLOY_ADMIN_PANEL:-true}"
+ADMIN_PANEL_DIR="${ADMIN_PANEL_DIR:-$APP_DIR/src/admin-panel}"
+ADMIN_PANEL_WEB_ROOT="${ADMIN_PANEL_WEB_ROOT:-/var/www/admin-panel}"
+ADMIN_API_URL="${ADMIN_API_URL:-}"
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
@@ -52,6 +56,28 @@ fi
 
 npm ci
 npx prisma generate
+
+if [ "$DEPLOY_ADMIN_PANEL" = "true" ] && [ -d "$ADMIN_PANEL_DIR" ]; then
+  if [ -z "$ADMIN_API_URL" ]; then
+    if [ -n "${FRONTEND_URL:-}" ]; then
+      ADMIN_API_URL="${FRONTEND_URL%/}/api"
+    else
+      ADMIN_API_URL="http://localhost:8080/api"
+    fi
+  fi
+
+  echo "Building admin panel with API URL: $ADMIN_API_URL"
+  (
+    cd "$ADMIN_PANEL_DIR"
+    printf 'VITE_API_URL=%s\n' "$ADMIN_API_URL" > .env.production
+    npm ci
+    npm run build
+  )
+
+  sudo mkdir -p "$ADMIN_PANEL_WEB_ROOT"
+  sudo find "$ADMIN_PANEL_WEB_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  sudo cp -a "$ADMIN_PANEL_DIR/dist/." "$ADMIN_PANEL_WEB_ROOT/"
+fi
 
 if [ "$RUN_DB_MIGRATIONS" = "true" ] && [ -d "prisma/migrations" ]; then
   chmod +x scripts/backup-db.sh

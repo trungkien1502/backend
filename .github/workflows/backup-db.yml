@@ -32,5 +32,6 @@ jobs:
           envs: APP_DIR,BACKUP_DIR,RETENTION_DAYS
           command_timeout: 30m
           script: |
+            cd "$APP_DIR"
             chmod +x scripts/backup-db.sh
             ./scripts/backup-db.sh
