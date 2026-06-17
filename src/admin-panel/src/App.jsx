@@ -12,7 +12,7 @@ import { BookingsPage } from './pages/Bookings';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
