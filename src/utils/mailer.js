@@ -11,10 +11,15 @@ function requireEnv(name) {
 }
 
 function createTransporter() {
+    const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const smtpSecure =
+        process.env.SMTP_SECURE === "true" || smtpPort === 465;
+
     return nodemailer.createTransport({
-        host: requireEnv("SMTP_HOST"),
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: process.env.SMTP_SECURE === "true",
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
         auth: {
             user: requireEnv("SMTP_USER"),
             pass: requireEnv("SMTP_PASS")

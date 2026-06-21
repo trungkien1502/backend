@@ -122,7 +122,7 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
 
         const now = new Date();
 
-        // 1. lấy ghế hợp lệ (lọc luôn)
+        // lấy ghế hợp lệ (lọc luôn)
         const seats = await tx.showtimeSeat.findMany({
             where: {
                 showtimeId: Number(showtimeId),
@@ -133,12 +133,12 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
             }
         });
 
-        // ❗ nếu thiếu ghế → fail luôn
+        // nếu thiếu ghế , fail luôn
         if (seats.length !== seatIds.length) {
             throw new Error("Some seats are invalid or expired");
         }
 
-        // 2. lấy giá
+        // lấy giá
         const showtime = await tx.showtime.findUnique({
             where: { id: Number(showtimeId) },
             select: { price: true }
@@ -148,7 +148,7 @@ exports.createBooking = async ({ userId, showtimeId, seatIds }) => {
 
         const totalPrice = Number(showtime.price) * seats.length;
 
-        // 3. tạo booking
+        // tạo booking
         const booking = await tx.booking.create({
             data: {
                 userId: Number(userId),

@@ -133,7 +133,7 @@ Lấy thông tin user hiện tại.
 
 **Lưu ý**
 
-API này hiện có khả năng lỗi do `controller` truyền `req.userId` vào service trong khi service đang tìm user theo `email`.
+API này đã được sửa để lấy user theo `req.userId`.
 
 ### POST `/api/auth/forgotpassword`
 
@@ -152,13 +152,22 @@ Tạo OTP reset password.
 ```json
 {
   "sent": true,
-  "otp": "123456"
+  "message": "If the email exists, a reset code has been sent"
 }
 ```
 
 **Lưu ý**
 
-Hiện tại OTP được trả thẳng ra response để test, chưa gửi email thật.
+OTP được gửi qua email bằng tài khoản SMTP hệ thống, không trả ra response.
+
+**Cấu hình cần có**
+
+- `SMTP_HOST` = `smtp.gmail.com`
+- `SMTP_PORT` = `587` hoặc `465`
+- `SMTP_SECURE` = `true` nếu dùng port `465`
+- `SMTP_USER` = email Gmail hệ thống
+- `SMTP_PASS` = mật khẩu ứng dụng của Gmail đó
+- `MAIL_FROM` = địa chỉ gửi mail, thường để trùng `SMTP_USER`
 
 ### POST `/api/auth/resetpassword`
 
@@ -983,7 +992,175 @@ Khi hủy:
 
 ---
 
-## 10. Payments / MoMo
+## 10. Reviews
+
+### Tổng quan luồng review
+
+User chỉ có thể review khi:
+
+- booking thuộc chính user đó
+- booking ở trạng thái `CONFIRMED`
+- showtime đã kết thúc
+- booking đó chưa từng có review
+
+Review gắn với:
+
+- `userId`
+- `movieId`
+- `bookingId`
+- `rating`
+- `content`
+- `spoiler`
+
+Backend sẽ tự lấy `userId` từ JWT token, không cần gửi `userId` trong body.
+
+### GET `/api/reviews/movie/:movieId`
+
+Lấy danh sách review của một phim.
+
+**Response**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "rating": 5,
+      "content": "Phim rất hay, xem xong rất đáng tiền.",
+      "spoiler": false,
+      "status": "PUBLISHED",
+      "createdAt": "2026-06-08T10:00:00.000Z",
+      "updatedAt": "2026-06-08T10:00:00.000Z",
+      "bookingId": 10,
+      "user": {
+        "id": 1,
+        "name": "Nguyen Van A"
+      },
+      "movie": {
+        "id": 3,
+        "title": "Avengers",
+        "poster": "https://example.com/poster.jpg"
+      }
+    }
+  ]
+}
+```
+
+### GET `/api/reviews/me`
+
+Lấy toàn bộ review của user hiện tại.
+
+**Auth:** `Bearer token`
+
+### GET `/api/reviews/:id`
+
+Lấy chi tiết review theo id.
+
+**Auth:** `Bearer token`
+
+### POST `/api/reviews`
+
+Tạo review mới.
+
+**Auth:** `Bearer token`
+
+**Body**
+
+```json
+{
+  "bookingId": 10,
+  "rating": 5,
+  "content": "Phim rất hay, hình ảnh đẹp và nội dung cuốn hút.",
+  "spoiler": false
+}
+```
+
+**Success Response**
+
+```json
+{
+  "message": "Review created successfully",
+  "data": {
+    "id": 1,
+    "rating": 5,
+    "content": "Phim rất hay, hình ảnh đẹp và nội dung cuốn hút.",
+    "spoiler": false,
+    "status": "PUBLISHED",
+    "bookingId": 10,
+    "user": {
+      "id": 1,
+      "name": "Nguyen Van A"
+    },
+    "movie": {
+      "id": 3,
+      "title": "Avengers",
+      "poster": "https://example.com/poster.jpg"
+    }
+  }
+}
+```
+
+**Rules**
+
+- `rating` phải từ 1 đến 5
+- `content` không được trống
+- booking phải là booking của chính user đang đăng nhập
+- booking phải `CONFIRMED`
+- showtime phải đã kết thúc
+- không được tạo review trùng cho cùng một booking
+
+### PUT `/api/reviews/:id`
+
+Sửa review của chính mình.
+
+**Auth:** `Bearer token`
+
+**Body**
+
+```json
+{
+  "rating": 4,
+  "content": "Sau khi xem lại mình thấy phim vẫn ổn, nhịp giữa hơi chậm.",
+  "spoiler": false
+}
+```
+
+### DELETE `/api/reviews/:id`
+
+Xóa review của chính mình.
+
+**Auth:** `Bearer token`
+
+### PATCH `/api/reviews/:id/status`
+
+Admin ẩn / hiện review.
+
+**Auth:** `Bearer ADMIN token`
+
+**Body**
+
+```json
+{
+  "status": "HIDDEN"
+}
+```
+
+hoặc
+
+```json
+{
+  "status": "PUBLISHED"
+}
+```
+
+**Lưu ý**
+
+- `Movie.rating` và `Movie.reviewCount` sẽ được cập nhật lại sau mỗi lần tạo / sửa / xóa / đổi trạng thái review
+- `Movie.rating` là điểm trung bình từ các review `PUBLISHED`
+
+---
+
+## 11. Payments / MoMo
 
 ### Tổng quan luồng MoMo
 
@@ -1314,7 +1491,7 @@ curl http://localhost:8080/api/payments/order/BOOKING_12_1777716000000
 
 ---
 
-## 11. Common Errors
+## 12. Common Errors
 
 ### 400 Bad Request
 
@@ -1369,7 +1546,7 @@ Khi user thường gọi API chỉ dành cho admin:
 
 ---
 
-## 12. Suggested Client Flow
+## 13. Suggested Client Flow
 
 Luồng đăng nhập admin web:
 
@@ -1387,6 +1564,7 @@ Luồng đặt vé trực tiếp, không dùng MoMo:
 5. `POST /api/showtimeseats/hold`
 6. `POST /api/bookings`
 7. `GET /api/bookings/user/:userId`
+8. Nếu showtime đã qua, gọi `POST /api/reviews`
 
 Luồng đặt vé thanh toán bằng MoMo:
 
@@ -1401,3 +1579,4 @@ Luồng đặt vé thanh toán bằng MoMo:
 9. App nhận redirect từ `MOMO_REDIRECT_URL`
 10. `GET /api/payments/order/:orderId`
 11. Nếu payment `PAID`, hiển thị vé / booking thành công
+12. Khi showtime đã qua, `POST /api/reviews`

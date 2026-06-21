@@ -14,6 +14,21 @@ const registerSchema = Joi.object({
         .required()
 });
 
+const changePasswordSchema = Joi.object({
+    oldPassword: Joi.string().min(6).required(),
+    newPassword: Joi.string().min(6).required()
+});
+
+const forgotPasswordSchema = Joi.object({
+    email: Joi.string().email().required()
+});
+
+const resetPasswordSchema = Joi.object({
+    email: Joi.string().email().required(),
+    code: Joi.string().pattern(/^[0-9]{6}$/).required(),
+    newPassword: Joi.string().min(6).required()
+});
+
 exports.register = async (req, res) => {
 
     const { error, value } = registerSchema.validate(req.body, {
@@ -83,13 +98,22 @@ exports.getCurrentUser = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
+    const { error, value } = changePasswordSchema.validate(req.body, {
+        stripUnknown: true
+    });
+
+    if (error) {
+        return res.status(400).json({
+            message: error.details[0].message
+        });
+    }
 
     try {
 
         const result = await authService.changePassword(
             req.userId,
-            req.body.oldPassword,
-            req.body.newPassword
+            value.oldPassword,
+            value.newPassword
         );
 
         res.json(result);
@@ -106,19 +130,18 @@ exports.changePassword = async (req, res) => {
 
 
 exports.forgotPassword = async (req, res) => {
+    const { error, value } = forgotPasswordSchema.validate(req.body, {
+        stripUnknown: true
+    });
 
-    const { email } = req.body;
-
-    if (!email) {
+    if (error) {
         return res.status(400).json({
-            message: "email is required"
+            message: error.details[0].message
         });
     }
 
     try {
-
-
-        await authService.forgotPassword(email);
+        await authService.forgotPassword(value.email);
 
 
         return res.json({
@@ -136,21 +159,22 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
+    const { error, value } = resetPasswordSchema.validate(req.body, {
+        stripUnknown: true
+    });
 
-    const { email, code, newPassword } = req.body;
-
-    if (!email || !code || !newPassword) {
+    if (error) {
         return res.status(400).json({
-            message: "email, code, newPassword are required"
+            message: error.details[0].message
         });
     }
 
     try {
 
         await authService.resetPassword({
-            email,
-            code,
-            newPassword
+            email: value.email,
+            code: value.code,
+            newPassword: value.newPassword
         });
 
         return res.json({

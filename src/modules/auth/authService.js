@@ -78,10 +78,9 @@ exports.getCurrentUser = async (userId) => {
 };
 
 
-exports.changePassword = async (email, oldPassword, newPassword) => {
-
+exports.changePassword = async (userId, oldPassword, newPassword) => {
     const user = await prisma.user.findUnique({
-        where: { email }
+        where: { id: userId }
     });
 
     if (!user) {
@@ -97,7 +96,7 @@ exports.changePassword = async (email, oldPassword, newPassword) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
-        where: { email },
+        where: { id: user.id },
         data: { password: hashedPassword }
     });
 
@@ -111,7 +110,6 @@ function gen6() {
 }
 
 exports.forgotPassword = async (email) => {
-
     const user = await prisma.user.findUnique({
         where: { email }
     });
@@ -119,8 +117,22 @@ exports.forgotPassword = async (email) => {
     if (!user) return;
 
     const otp = gen6();
-
     const codeHash = await bcrypt.hash(otp, 10);
+
+    // Invalidate any previous reset codes so only the latest OTP can be used.
+    await prisma.passwordReset.updateMany({
+        where: {
+            userId: user.id,
+            usedAt: null,
+            expireAt: {
+                gt: new Date()
+            }
+        },
+        data: {
+            usedAt: new Date(),
+            expireAt: new Date()
+        }
+    });
 
     await prisma.passwordReset.create({
         data: {
@@ -134,7 +146,6 @@ exports.forgotPassword = async (email) => {
 };
 
 exports.resetPassword = async ({ email, code, newPassword }) => {
-
     const user = await prisma.user.findUnique({
         where: { email }
     });
@@ -146,20 +157,18 @@ exports.resetPassword = async ({ email, code, newPassword }) => {
     const reset = await prisma.passwordReset.findFirst({
         where: {
             userId: user.id,
+            usedAt: null,
             expireAt: {
                 gt: new Date()
             }
         },
         orderBy: {
-            expireAt: 'desc'
+            createdAt: "desc"
         }
     });
 
     if (!reset) {
         throw new Error("No valid OTP found");
-    }
-    if (reset.expireAt < new Date()) {
-        throw new Error("OTP expired");
     }
 
     const match = await bcrypt.compare(code, reset.codeHash);
