@@ -11,7 +11,7 @@ const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://uit-cinema.koreacentral.cloudapp.azure.com",
+    "http://uit-cinema.koreacentral.cloudapp.azure.com",
     "http://52.231.73.175:80",
     process.env.FRONTEND_URL
 ].filter(Boolean);
