@@ -11,34 +11,31 @@ const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://uit-cinema.eastasia.cloudapp.azure.com",
+    "https://uit-cinema.koreacentral.cloudapp.azure.com",
     process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors(
-{
-    origin: function (origin, callback)
     {
-        if (!origin)
-        {
-            return callback(null, true);
-        }
+        origin: function (origin, callback) {
+            if (!origin) {
+                return callback(null, true);
+            }
 
-        if (allowedOrigins.includes(origin))
-        {
-            return callback(null, true);
-        }
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
 
-        return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true
-}));
+            return callback(new Error(`CORS blocked for origin: ${origin}`));
+        },
+        credentials: true
+    }));
 
 app.use(express.json());
 app.use(express.urlencoded(
-{
-    extended: true
-}));
+    {
+        extended: true
+    }));
 
 const authRoute = require("./src/modules/auth/authRoute");
 const movieRoute = require("./src/modules/movie/movieroute");
@@ -51,18 +48,16 @@ const bookingRoute = require("./src/modules/booking/bookingRoute");
 const paymentRoute = require("./src/modules/payment/paymentRoute");
 const reviewRoute = require("./src/modules/review/reviewRoute");
 
-app.get("/", (req, res) =>
-{
+app.get("/", (req, res) => {
     res.status(200).send("Backend is running");
 });
 
-app.get("/health", (req, res) =>
-{
+app.get("/health", (req, res) => {
     res.status(200).json(
-    {
-        success: true,
-        message: "Backend is healthy"
-    });
+        {
+            success: true,
+            message: "Backend is healthy"
+        });
 });
 
 app.use("/api/cinemas", cinemaRoute);
@@ -89,29 +84,26 @@ app.use("/bookings", bookingRoute);
 app.use("/payments", paymentRoute);
 app.use("/reviews", reviewRoute);
 
-app.use((req, res) =>
-{
+app.use((req, res) => {
     res.status(404).json(
-    {
-        success: false,
-        message: "Route not found"
-    });
+        {
+            success: false,
+            message: "Route not found"
+        });
 });
 
-app.use((err, req, res, next) =>
-{
+app.use((err, req, res, next) => {
     console.error("Server error:", err);
 
     res.status(err.status || 500).json(
-    {
-        success: false,
-        message: err.message || "Internal server error"
-    });
+        {
+            success: false,
+            message: err.message || "Internal server error"
+        });
 });
 
 const port = process.env.PORT || 8080;
 
-app.listen(port, () =>
-{
+app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
