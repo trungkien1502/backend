@@ -261,9 +261,9 @@ exports.createReview = async ({ userId, bookingId, rating, content, spoiler = fa
             throw new Error("Booking is not eligible for review");
         }
 
-        if (new Date() < new Date(booking.showtime.endTime)) {
-            throw new Error("You can only review after the showtime has ended");
-        }
+        // if (new Date() < new Date(booking.showtime.endTime)) {
+        //     throw new Error("You can only review after the showtime has ended");
+        // }
 
         if (booking.reviews.length > 0) {
             throw new Error("Review already exists for this booking");
