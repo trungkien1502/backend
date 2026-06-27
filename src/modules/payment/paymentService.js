@@ -3,9 +3,7 @@ const crypto = require("crypto");
 const prisma = require("../../config/prisma");
 
 const MOMO_CREATE_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create";
-const MOMO_QUERY_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/query";
 const PAYMENT_HOLD_MINUTES = Number(process.env.PAYMENT_HOLD_MINUTES || 5);
-const UNKNOWN_PENDING_RESULT_CODES = new Set(["99"]);
 
 const normalizeNumberArray = (value) => {
     if (!Array.isArray(value)) return [];
@@ -28,7 +26,6 @@ const isHttpUrl = (value) => {
 const getMomoConfig = () => {
     const config = {
         endpoint: process.env.MOMO_ENDPOINT || MOMO_CREATE_ENDPOINT,
-        queryEndpoint: process.env.MOMO_QUERY_ENDPOINT || MOMO_QUERY_ENDPOINT,
         partnerCode: process.env.MOMO_PARTNER_CODE,
         accessKey: process.env.MOMO_ACCESS_KEY,
         secretKey: process.env.MOMO_SECRET_KEY,
@@ -103,13 +100,6 @@ const buildNotifySignature = (params, accessKey) => {
         + `&transId=${params.transId ?? ""}`;
 };
 
-const buildQuerySignature = ({ accessKey, orderId, partnerCode, requestId }) => {
-    return `accessKey=${accessKey}`
-        + `&orderId=${orderId}`
-        + `&partnerCode=${partnerCode}`
-        + `&requestId=${requestId}`;
-};
-
 const verifyMomoSignature = (params) => {
     const config = getMomoConfig();
     const raw = buildNotifySignature(params, config.accessKey);
@@ -117,8 +107,6 @@ const verifyMomoSignature = (params) => {
 
     return expected === params.signature;
 };
-
-const isUnknownPendingResult = (resultCode) => UNKNOWN_PENDING_RESULT_CODES.has(String(resultCode));
 
 const cancelPendingPaymentBooking = async (bookingId) => {
     const booking = await prisma.booking.findUnique({
@@ -336,8 +324,12 @@ exports.createMomoPayment = async ({ userId, showtimeId, seatIds }) => {
     }
 };
 
-const applyMomoPaymentResult = async (body) => {
+exports.handleMomoIpn = async (body) => {
     const config = getMomoConfig();
+
+    if (!verifyMomoSignature(body)) {
+        throw new Error("Invalid MoMo signature");
+    }
 
     if (body.partnerCode !== config.partnerCode) {
         throw new Error("Invalid MoMo partnerCode");
@@ -367,22 +359,17 @@ const applyMomoPaymentResult = async (body) => {
     }
 
     const paid = Number(body.resultCode) === 0;
-    const unknownPending = isUnknownPendingResult(body.resultCode);
     const showtimeSeatIds = payment.booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeatId);
 
     await prisma.$transaction(async (tx) => {
         await tx.payment.update({
             where: { id: payment.id },
             data: {
-                status: paid ? "PAID" : (unknownPending ? "PENDING" : "FAILED"),
+                status: paid ? "PAID" : "FAILED",
                 transId: body.transId ? String(body.transId) : payment.transId,
                 rawResponse: body
             }
         });
-
-        if (unknownPending) {
-            return;
-        }
 
         if (!paid) {
             await tx.booking.update({
@@ -438,120 +425,9 @@ const applyMomoPaymentResult = async (body) => {
 
     return {
         paid,
-        pending: unknownPending,
-        resultCode: body.resultCode,
-        message: body.message,
         bookingId: payment.bookingId,
         paymentId: payment.id
     };
-};
-
-exports.handleMomoIpn = async (body) => {
-    if (!verifyMomoSignature(body)) {
-        throw new Error("Invalid MoMo signature");
-    }
-
-    return applyMomoPaymentResult(body);
-};
-
-exports.queryMomoPayment = async (orderId) => {
-    const config = getMomoConfig();
-    const payment = await exports.getPaymentByOrderId(orderId);
-
-    if (!payment) throw new Error("Payment not found");
-
-    const requestId = `${payment.requestId}_QUERY_${Date.now()}`;
-    const rawSignature = buildQuerySignature({
-        accessKey: config.accessKey,
-        orderId: payment.orderId,
-        partnerCode: config.partnerCode,
-        requestId
-    });
-
-    const payload = {
-        partnerCode: config.partnerCode,
-        requestId,
-        orderId: payment.orderId,
-        signature: signRaw(rawSignature, config.secretKey),
-        lang: "vi"
-    };
-
-    const { data } = await axios.post(config.queryEndpoint, payload, { timeout: 30000 });
-
-    await prisma.payment.update({
-        where: { id: payment.id },
-        data: { rawResponse: data }
-    });
-
-    if (data.resultCode !== undefined) {
-        return {
-            momo: data,
-            processed: await applyMomoPaymentResult({
-                ...data,
-                partnerCode: data.partnerCode || config.partnerCode,
-                amount: data.amount ?? String(payment.amount),
-                requestId: payment.requestId,
-                orderId: payment.orderId
-            })
-        };
-    }
-
-    return { momo: data, processed: null };
-};
-
-exports.forceConfirmPayment = async (orderId) => {
-    const payment = await prisma.payment.findUnique({
-        where: { orderId },
-        include: {
-            booking: {
-                include: { bookingSeats: true }
-            }
-        }
-    });
-
-    if (!payment) throw new Error("Payment not found");
-
-    const showtimeSeatIds = payment.booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeatId);
-
-    await prisma.$transaction(async (tx) => {
-        await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-                status: "PAID",
-                rawResponse: {
-                    ...(payment.rawResponse && typeof payment.rawResponse === "object" ? payment.rawResponse : {}),
-                    demoForceConfirmedAt: new Date().toISOString()
-                }
-            }
-        });
-
-        const seatResult = await tx.showtimeSeat.updateMany({
-            where: {
-                id: { in: showtimeSeatIds },
-                OR: [
-                    { status: "HOLD", heldBy: payment.booking.userId },
-                    { status: "AVAILABLE" },
-                    { status: "BOOKED" }
-                ]
-            },
-            data: {
-                status: "BOOKED",
-                holdUntil: null,
-                heldBy: null
-            }
-        });
-
-        if (seatResult.count !== showtimeSeatIds.length) {
-            throw new Error("Cannot force confirm booking because seats are no longer available");
-        }
-
-        await tx.booking.update({
-            where: { id: payment.bookingId },
-            data: { status: "CONFIRMED" }
-        });
-    });
-
-    return exports.getPaymentByOrderId(orderId);
 };
 
 exports.getPaymentByOrderId = async (orderId) => {

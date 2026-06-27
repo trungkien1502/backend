@@ -54,27 +54,18 @@ const buildAppPaymentReturnUrl = ({ payment, resultCode, message }) => {
     }
 };
 
-const pickMomoLogFields = (payload) => ({
-    orderId: payload.orderId,
-    requestId: payload.requestId,
-    resultCode: payload.resultCode,
-    amount: payload.amount,
-    message: payload.message,
-    payType: payload.payType,
-    transId: payload.transId,
-    responseTime: payload.responseTime
-});
-
 exports.createMomoPayment = async (req, res) => {
+
     try {
         const { userId, showtimeId, seatIds } = req.body;
+
 
         const data = await paymentService.createMomoPayment({
             userId: req.userId || userId,
             showtimeId,
             seatIds
         });
-        console.log("MoMo create response:", data);
+        console.log("🔥 MOMO CREATE RESPONSE:", data);
 
         res.json({
             message: "MoMo payment created",
@@ -85,11 +76,17 @@ exports.createMomoPayment = async (req, res) => {
     }
 };
 
+
 exports.handleMomoIpn = async (req, res) => {
-    console.log("MoMo full IPN body:", JSON.stringify(req.body, null, 2));
+    console.log("🔥 FULL IPN BODY:", JSON.stringify(req.body, null, 2));
 
     try {
-        console.log("MoMo IPN received:", pickMomoLogFields(req.body));
+        console.log("MoMo IPN received:", {
+            orderId: req.body.orderId,
+            requestId: req.body.requestId,
+            resultCode: req.body.resultCode,
+            amount: req.body.amount
+        });
 
         const result = await paymentService.handleMomoIpn(req.body);
 
@@ -106,7 +103,12 @@ exports.handleMomoReturn = async (req, res) => {
     try {
         if (req.query.orderId && req.query.signature) {
             try {
-                console.log("MoMo return received:", pickMomoLogFields(req.query));
+                console.log("MoMo return received:", {
+                    orderId: req.query.orderId,
+                    requestId: req.query.requestId,
+                    resultCode: req.query.resultCode,
+                    amount: req.query.amount
+                });
 
                 const result = await paymentService.handleMomoIpn(req.query);
 
@@ -158,34 +160,6 @@ exports.getPaymentByOrderId = async (req, res) => {
         }
 
         res.json({ data: payment });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-exports.queryMomoPayment = async (req, res) => {
-    try {
-        const result = await paymentService.queryMomoPayment(req.params.orderId);
-        res.json({
-            message: "MoMo payment status queried",
-            data: result
-        });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-exports.forceConfirmPayment = async (req, res) => {
-    if (process.env.ENABLE_PAYMENT_DEMO_TOOLS !== "true") {
-        return res.status(404).json({ message: "Route not found" });
-    }
-
-    try {
-        const payment = await paymentService.forceConfirmPayment(req.params.orderId);
-        res.json({
-            message: "Payment force-confirmed for demo",
-            data: payment
-        });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
