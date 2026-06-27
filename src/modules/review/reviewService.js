@@ -257,9 +257,9 @@ exports.createReview = async ({ userId, bookingId, rating, content, spoiler = fa
             throw new Error("You can only review your own booking");
         }
 
-        if (booking.status !== "CONFIRMED") {
-            throw new Error("Booking is not eligible for review");
-        }
+        // if (booking.status !== "CONFIRMED") {
+        //     throw new Error("Booking is not eligible for review");
+        // }
 
         // if (new Date() < new Date(booking.showtime.endTime)) {
         //     throw new Error("You can only review after the showtime has ended");
