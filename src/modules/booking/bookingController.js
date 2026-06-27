@@ -30,6 +30,27 @@ exports.createBooking = async (req, res) => {
     }
 };
 
+exports.createManualPaidBooking = async (req, res) => {
+    try {
+        const { userId, showtimeId, seatIds } = req.body;
+
+        const data = await bookingService.createManualPaidBooking({
+            userId,
+            showtimeId,
+            seatIds
+        });
+
+        res.status(201).json({
+            message: "Manual paid booking created",
+            data
+        });
+    } catch (error) {
+        res.status(400).json({
+            message: error.message
+        });
+    }
+};
+
 exports.getBookingsByUser = async (req, res) => {
     try {
         const data = await bookingService.getBookingsByUser(req.params.userId);

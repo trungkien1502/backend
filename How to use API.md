@@ -895,6 +895,54 @@ API này xác nhận booking ngay, không đi qua MoMo. Nếu thanh toán bằng
 - `heldBy` phải đúng `userId`
 - `holdUntil` phải còn hiệu lực
 
+### POST `/api/bookings/manual-paid`
+
+Tạo booking thủ công và set luôn payment là `PAID` để phục vụ demo, test dữ liệu, hoặc tạo booking khi payment thật đang lỗi.
+
+**Auth:** `Bearer ADMIN token`
+
+**Body**
+
+```json
+{
+  "userId": 6,
+  "showtimeId": 56,
+  "seatIds": [1, 2, 3]
+}
+```
+
+**Success Response**
+
+```json
+{
+  "message": "Manual paid booking created",
+  "data": {
+    "booking": {
+      "id": 10,
+      "totalPrice": 270000,
+      "status": "CONFIRMED",
+      "createdAt": "2026-04-21T10:00:00.000Z"
+    },
+    "payment": {
+      "id": 8,
+      "provider": "MANUAL",
+      "status": "PAID",
+      "orderId": "MANUAL_BOOKING_10",
+      "requestId": "MANUAL_BOOKING_10_1777716000000",
+      "amount": 270000
+    },
+    "holdUntil": "2026-04-21T10:05:00.000Z"
+  }
+}
+```
+
+**Lưu ý**
+
+- API này sẽ tự giữ ghế, tạo booking, tạo bookingSeat, update ghế sang `BOOKED`, rồi tạo payment `PAID`
+- `seatIds` phải là `seatId` thật của bảng `ShowtimeSeat` thuộc showtime đó, không phải số ghế theo cảm giác
+- Nếu ghế nào đã `BOOKED` thì API sẽ báo lỗi
+- Nên dùng cho admin / demo / test data, không phải flow thanh toán thật
+
 ### GET `/api/bookings/user/:userId`
 
 Lấy toàn bộ booking của 1 user.
@@ -1003,6 +1051,15 @@ User chỉ có thể review khi:
 - showtime đã kết thúc
 - booking đó chưa từng có review
 
+**Lưu ý**
+
+Trong code hiện tại, backend đã tạm tắt 2 điều kiện kiểm tra:
+
+- booking phải `CONFIRMED`
+- showtime phải đã kết thúc
+
+Tài liệu này mô tả luồng mong muốn/chuẩn nghiệp vụ. Khi cần siết lại thì chỉ cần bật lại 2 đoạn validate đó trong `reviewService.js`.
+
 Review gắn với:
 
 - `userId`
@@ -1017,6 +1074,8 @@ Backend sẽ tự lấy `userId` từ JWT token, không cần gửi `userId` tro
 ### GET `/api/reviews/movie/:movieId`
 
 Lấy danh sách review của một phim.
+
+**Auth:** Không bắt buộc
 
 **Response**
 
@@ -1052,11 +1111,65 @@ Lấy toàn bộ review của user hiện tại.
 
 **Auth:** `Bearer token`
 
+**Response**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "rating": 5,
+      "content": "Phim rất hay, xem xong rất đáng tiền.",
+      "spoiler": false,
+      "status": "PUBLISHED",
+      "createdAt": "2026-06-08T10:00:00.000Z",
+      "updatedAt": "2026-06-08T10:00:00.000Z",
+      "bookingId": 10,
+      "user": {
+        "id": 1,
+        "name": "Nguyen Van A"
+      },
+      "movie": {
+        "id": 3,
+        "title": "Avengers",
+        "poster": "https://example.com/poster.jpg"
+      }
+    }
+  ]
+}
+```
+
 ### GET `/api/reviews/:id`
 
 Lấy chi tiết review theo id.
 
 **Auth:** `Bearer token`
+
+**Response**
+
+```json
+{
+  "data": {
+    "id": 1,
+    "rating": 5,
+    "content": "Phim rất hay, xem xong rất đáng tiền.",
+    "spoiler": false,
+    "status": "PUBLISHED",
+    "createdAt": "2026-06-08T10:00:00.000Z",
+    "updatedAt": "2026-06-08T10:00:00.000Z",
+    "bookingId": 10,
+    "user": {
+      "id": 1,
+      "name": "Nguyen Van A"
+    },
+    "movie": {
+      "id": 3,
+      "title": "Avengers",
+      "poster": "https://example.com/poster.jpg"
+    }
+  }
+}
+```
 
 ### POST `/api/reviews`
 
@@ -1130,6 +1243,14 @@ Sửa review của chính mình.
 Xóa review của chính mình.
 
 **Auth:** `Bearer token`
+
+**Success Response**
+
+```json
+{
+  "message": "Review deleted successfully"
+}
+```
 
 ### PATCH `/api/reviews/:id/status`
 

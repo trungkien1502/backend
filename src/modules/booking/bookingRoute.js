@@ -6,6 +6,7 @@ const requireAdmin = require("../../middlewares/requireAdmin");
 
 router.get("/", authMiddleware, requireAdmin, controller.getAllBookings);
 router.post("/", controller.createBooking);
+router.post("/manual-paid", authMiddleware, requireAdmin, controller.createManualPaidBooking);
 router.get("/user/:userId", controller.getBookingsByUser);
 router.get("/:id", controller.getBookingById);
 router.post("/:id/cancel", authMiddleware, requireAdmin, controller.cancelBooking);
