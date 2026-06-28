@@ -150,8 +150,8 @@ export const RoomsPage = () => {
     if (!window.confirm('Delete this room?')) return;
 
     try {
-      await roomAPI.remove(roomId);
-      setMessage({ type: 'success', text: 'Room deleted.' });
+      const result = await roomAPI.remove(roomId);
+      setMessage({ type: 'success', text: result?.message || 'Xóa thành công' });
 
       if (selectedRoom?.id === roomId) {
         setSelectedRoom(null);
@@ -209,8 +209,8 @@ export const RoomsPage = () => {
     if (!window.confirm('Delete all seats in this room?')) return;
 
     try {
-      await seatAPI.clearRoom(selectedRoom.id);
-      setMessage({ type: 'success', text: 'Seats removed.' });
+      const result = await seatAPI.clearRoom(selectedRoom.id);
+      setMessage({ type: 'success', text: result?.message || 'Xóa thành công' });
       await fetchSeats(selectedRoom.id);
       await fetchRooms();
     } catch (error) {

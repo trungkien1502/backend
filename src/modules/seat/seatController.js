@@ -57,11 +57,8 @@ exports.deleteSeat = async (req, res) => {
     try {
         const roomId = req.params.roomId;
         const result = await seatService.deleteSeat(roomId);
-        if (!roomId) {
-            return res.status(404).json({ message: "Room not found", data: result });
-        }
-        res.json({ message: "Seats deleted" });
+        res.json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };

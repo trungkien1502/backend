@@ -107,8 +107,8 @@ export const CinemasPage = () => {
     if (!window.confirm('Delete this cinema?')) return;
 
     try {
-      await cinemaAPI.remove(cinemaId);
-      setMessage({ type: 'success', text: 'Cinema deleted.' });
+      const result = await cinemaAPI.remove(cinemaId);
+      setMessage({ type: 'success', text: result?.message || 'Xóa thành công' });
 
       if (selectedCinema?.id === cinemaId) {
         setSelectedCinema(null);

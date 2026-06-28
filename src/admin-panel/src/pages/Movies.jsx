@@ -185,8 +185,8 @@ export const MoviesPage = () => {
     if (!window.confirm('Delete this movie?')) return;
 
     try {
-      await movieAPI.remove(movieId);
-      setMessage({ type: 'success', text: 'Movie deleted.' });
+      const result = await movieAPI.remove(movieId);
+      setMessage({ type: 'success', text: result?.message || 'Xóa thành công' });
 
       if (selectedMovie?.id === movieId) {
         setSelectedMovie(null);

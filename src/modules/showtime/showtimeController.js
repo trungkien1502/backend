@@ -50,13 +50,9 @@ exports.updateShowtime = async (req, res) => {
 exports.deleteShowtime = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedShowtime = await showtimeService.deleteShowtime(id);
-        if (!deletedShowtime) {
-            return res.status(404).json({ message: "Showtime not found" });
-        }
-        res.json({ message: "Showtime deleted" });
+        const result = await showtimeService.deleteShowtime(id);
+        res.json(result);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };
-

@@ -136,8 +136,8 @@ export const ShowtimesPage = () => {
     if (!window.confirm('Delete this showtime?')) return;
 
     try {
-      await showtimeAPI.remove(showtimeId);
-      setMessage({ type: 'success', text: 'Showtime deleted.' });
+      const result = await showtimeAPI.remove(showtimeId);
+      setMessage({ type: 'success', text: result?.message || 'Xóa thành công' });
 
       if (selectedShowtime?.id === showtimeId) {
         setSelectedShowtime(null);

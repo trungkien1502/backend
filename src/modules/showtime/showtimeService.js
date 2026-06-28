@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const { throwRelatedDataError } = require("../../utils/deleteGuard");
 
 const parseShowtimePayload = (data) => {
     const movieId = Number(data.movieId);
@@ -169,13 +170,30 @@ exports.updateShowtime = async (id, data) => {
 exports.deleteShowtime = async (id) => {
     const showtimeId = Number(id);
 
+    if (!Number.isInteger(showtimeId) || showtimeId <= 0) {
+        const error = new Error("Invalid showtime id");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const showtime = await prisma.showtime.findUnique({
+        where: { id: showtimeId },
+        select: { id: true }
+    });
+
+    if (!showtime) {
+        const error = new Error("Showtime not found");
+        error.statusCode = 404;
+        throw error;
+    }
+
     //check có booking không
     const hasBooking = await prisma.booking.findFirst({
         where: { showtimeId }
     });
 
     if (hasBooking) {
-        throw new Error("Không thể xoá showtime đã có người đặt vé");
+        throwRelatedDataError();
     }
     // xoá showtimeSeat trước
     await prisma.showtimeSeat.deleteMany({
@@ -183,9 +201,11 @@ exports.deleteShowtime = async (id) => {
     });
 
     //  xoá showtime
-    return await prisma.showtime.delete({
+    await prisma.showtime.delete({
         where: { id: showtimeId }
     });
+
+    return { message: "Xóa thành công" };
 };
 
 // exports.getShowtimesByMovieId = async (movieId) => {
@@ -205,6 +225,4 @@ exports.deleteShowtime = async (id) => {
 //         orderBy: { startTime: "asc" }
 //     });
 // };
-
-
 

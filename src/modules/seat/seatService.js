@@ -1,5 +1,6 @@
 const prisma = require("../../config/prisma");
 const bcrypt = require("bcrypt");
+const { throwRelatedDataError } = require("../../utils/deleteGuard");
 
 exports.getAllSeats = async (query = {}) => {
     const { search } = query;
@@ -81,16 +82,51 @@ exports.updateSeat = async (id, data) => {
 };
 
 exports.deleteSeat = async (roomId) => {
-    const room = await prisma.seat.findMany({
-        where: { roomId: Number(roomId) }
+    const parsedRoomId = Number(roomId);
+
+    if (!Number.isInteger(parsedRoomId) || parsedRoomId <= 0) {
+        throw new Error("Invalid room id");
+    }
+
+    const room = await prisma.room.findUnique({
+        where: { id: parsedRoomId },
+        select: { id: true }
     });
 
     if (!room) {
-        throw new Error("no seat found in this room");
+        const error = new Error("Room not found");
+        error.statusCode = 404;
+        throw error;
     }
-    return await prisma.seat.deleteMany({
-        where: { roomId: Number(roomId) }
+
+    const seats = await prisma.seat.findMany({
+        where: { roomId: parsedRoomId },
+        select: { id: true }
     });
+
+    if (seats.length === 0) {
+        const error = new Error("No seats found in this room");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const showtimeSeatCount = await prisma.showtimeSeat.count({
+        where: {
+            seatId: {
+                in: seats.map((seat) => seat.id)
+            }
+        }
+    });
+
+    if (showtimeSeatCount > 0) {
+        throwRelatedDataError();
+    }
+
+    await prisma.seat.deleteMany({
+        where: { roomId: parsedRoomId }
+    });
+
+    return { message: "Xóa thành công" };
 };
 
 exports.getSeatsByRoomId = async (roomId, query = {}) => {

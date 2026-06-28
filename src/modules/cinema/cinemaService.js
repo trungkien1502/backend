@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const { throwRelatedDataError } = require("../../utils/deleteGuard");
 
 const toCinemaId = (id) => {
     const cinemaId = Number(id);
@@ -34,9 +35,31 @@ const updateCinema = async (id, cinemaData) => {
 };
 
 const deleteCinema = async (id) => {
-    return await prisma.cinema.delete({
+    const cinemaId = toCinemaId(id);
+
+    const cinema = await prisma.cinema.findUnique({
+        where: { id: cinemaId }
+    });
+
+    if (!cinema) {
+        const error = new Error("Cinema not found");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const roomCount = await prisma.room.count({
+        where: { cinemaId }
+    });
+
+    if (roomCount > 0) {
+        throwRelatedDataError();
+    }
+
+    await prisma.cinema.delete({
         where: { id: toCinemaId(id) }
     });
+
+    return { message: "Xóa thành công" };
 };
 
 module.exports = {

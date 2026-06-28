@@ -50,15 +50,12 @@ exports.updateCinema = async (req, res) => {
 
 exports.deleteCinema = async (req, res) => {
     try {
-        const cinema = await cinemaService.deleteCinema(req.params.id);
-        if (!cinema) {
-            return res.status(404).json({ message: "Cinema not found" });
-        }
-        res.json({ message: "Cinema deleted" });
+        const result = await cinemaService.deleteCinema(req.params.id);
+        res.json(result);
     } catch (error) {
         if (error.message === "Invalid cinema id") {
             return res.status(400).json({ message: error.message });
         }
-        res.status(500).json({ message: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };

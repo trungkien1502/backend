@@ -48,12 +48,9 @@ exports.updateRoom = async (req, res) => {
 
 exports.deleteRoom = async (req, res) => {
     try {
-        const room = await roomService.deleteRoom(req.params.id);
-        if (!room) {
-            return res.status(404).json({ message: "Room not found" });
-        }
-        res.json({ message: "Room deleted" });
+        const result = await roomService.deleteRoom(req.params.id);
+        res.json(result);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(error.statusCode || 500).json({ message: error.message });
     }
 };

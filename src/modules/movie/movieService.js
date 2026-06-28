@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const { throwRelatedDataError } = require("../../utils/deleteGuard");
 
 const movieDetailRelationsInclude = {
     people: {
@@ -207,7 +208,20 @@ exports.deleteMovie = async (id) => {
         throw error;
     }
 
-    return await prisma.movie.delete({
+    const [showtimeCount, reviewCount, moviePersonCount, movieGenreCount] = await Promise.all([
+        prisma.showtime.count({ where: { movieId } }),
+        prisma.movieReview.count({ where: { movieId } }),
+        prisma.moviePerson.count({ where: { movieId } }),
+        prisma.movieGenre.count({ where: { movieId } })
+    ]);
+
+    if (showtimeCount > 0 || reviewCount > 0 || moviePersonCount > 0 || movieGenreCount > 0) {
+        throwRelatedDataError();
+    }
+
+    await prisma.movie.delete({
         where: { id: movieId }
     });
+
+    return { message: "Xóa thành công" };
 };

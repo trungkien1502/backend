@@ -38,8 +38,8 @@ exports.updateMovie = async (req, res) => {
 
 exports.deleteMovie = async (req, res) => {
     try {
-        await movieService.deleteMovie(req.params.id);
-        res.json({ message: "Movie deleted" });
+        const result = await movieService.deleteMovie(req.params.id);
+        res.json(result);
     } catch (error) {
         res.status(error.statusCode || 500).json({ message: error.message });
     }

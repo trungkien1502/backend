@@ -1,4 +1,5 @@
 const prisma = require("../../config/prisma");
+const { throwRelatedDataError } = require("../../utils/deleteGuard");
 
 const parseRoomId = (id) => {
     const roomId = Number(id);
@@ -84,7 +85,9 @@ exports.getRoomById = async (id) => {
     });
     
     if (!room) {
-        throw new Error("Room not found");
+        const error = new Error("Room not found");
+        error.statusCode = 404;
+        throw error;
     }
     return room;
 };
@@ -153,9 +156,20 @@ exports.deleteRoom = async (id) => {
         throw new Error("Room not found");
     }
 
-    return await prisma.room.delete({
+    const [seatCount, showtimeCount] = await Promise.all([
+        prisma.seat.count({ where: { roomId } }),
+        prisma.showtime.count({ where: { roomId } })
+    ]);
+
+    if (seatCount > 0 || showtimeCount > 0) {
+        throwRelatedDataError();
+    }
+
+    await prisma.room.delete({
         where: { id: roomId }
     });
+
+    return { message: "Xóa thành công" };
 };
 
 // exports.getRoomsByCinemaId = async (cinemaId) => {
