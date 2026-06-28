@@ -220,6 +220,38 @@ exports.handleVnpayReturn = async (req, res) => {
     }
 };
 
+exports.handleVnpayIpn = async (req, res) => {
+    try {
+        console.log("VNPay IPN received:", {
+            orderId: req.query.vnp_TxnRef,
+            responseCode: req.query.vnp_ResponseCode,
+            transactionStatus: req.query.vnp_TransactionStatus,
+            amount: req.query.vnp_Amount
+        });
+
+        await paymentService.handleVnpayReturn(req.query);
+
+        res.json({
+            RspCode: "00",
+            Message: "Confirm Success"
+        });
+    } catch (error) {
+        console.error("VNPay IPN error:", error.message);
+
+        const message = error.message || "Unknown error";
+        let code = "99";
+
+        if (message.includes("Invalid VNPay signature")) code = "97";
+        if (message.includes("Payment not found")) code = "01";
+        if (message.includes("Invalid VNPay amount")) code = "04";
+
+        res.json({
+            RspCode: code,
+            Message: message
+        });
+    }
+};
+
 exports.getPaymentByOrderId = async (req, res) => {
     try {
         const payment = await paymentService.getPaymentByOrderId(req.params.orderId);
