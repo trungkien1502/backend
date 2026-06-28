@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const prisma = require("../../config/prisma");
 
 const MOMO_CREATE_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create";
+const VNPAY_PAYMENT_ENDPOINT = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 const PAYMENT_HOLD_MINUTES = Number(process.env.PAYMENT_HOLD_MINUTES || 5);
 
 const normalizeNumberArray = (value) => {
@@ -58,6 +59,76 @@ const getMomoConfig = () => {
     }
 
     return config;
+};
+
+const getVnpayConfig = () => {
+    const config = {
+        paymentUrl: process.env.VNPAY_PAYMENT_URL || VNPAY_PAYMENT_ENDPOINT,
+        tmnCode: process.env.VNPAY_TMN_CODE,
+        hashSecret: process.env.VNPAY_HASH_SECRET,
+        returnUrl: process.env.VNPAY_RETURN_URL
+    };
+
+    const missing = Object.entries(config)
+        .filter(([, value]) => !value)
+        .map(([key]) => key);
+
+    if (missing.length) {
+        throw new Error(`Missing VNPay config: ${missing.join(", ")}`);
+    }
+
+    if (!isHttpUrl(config.returnUrl)) {
+        throw new Error("VNPAY_RETURN_URL must be a backend http(s) URL.");
+    }
+
+    return config;
+};
+
+const formatVnpayDate = (date) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(date).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+    }, {});
+
+    return `${parts.year}${parts.month}${parts.day}${parts.hour}${parts.minute}${parts.second}`;
+};
+
+const encodeVnpayValue = (value) => {
+    return encodeURIComponent(String(value)).replace(/%20/g, "+");
+};
+
+const buildVnpaySignedQuery = (params) => {
+    return Object.keys(params)
+        .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== "")
+        .sort()
+        .map((key) => `${encodeVnpayValue(key)}=${encodeVnpayValue(params[key])}`)
+        .join("&");
+};
+
+const signVnpayParams = (params, hashSecret) => {
+    const signedQuery = buildVnpaySignedQuery(params);
+    return crypto.createHmac("sha512", hashSecret).update(signedQuery, "utf8").digest("hex");
+};
+
+const verifyVnpaySignature = (params, hashSecret) => {
+    const receivedHash = params.vnp_SecureHash;
+    if (!receivedHash) return false;
+
+    const signedParams = { ...params };
+    delete signedParams.vnp_SecureHash;
+    delete signedParams.vnp_SecureHashType;
+
+    const expectedHash = signVnpayParams(signedParams, hashSecret);
+    return expectedHash.toLowerCase() === String(receivedHash).toLowerCase();
 };
 
 const buildCreateSignature = ({
@@ -324,6 +395,155 @@ exports.createMomoPayment = async ({ userId, showtimeId, seatIds }) => {
     }
 };
 
+exports.createVnpayPayment = async ({ userId, showtimeId, seatIds, ipAddr }) => {
+    const config = getVnpayConfig();
+    const normalizedSeatIds = normalizeNumberArray(seatIds);
+
+    if (!userId || !showtimeId || !normalizedSeatIds.length) {
+        throw new Error("Invalid input");
+    }
+
+    const paymentContext = await prisma.$transaction(async (tx) => {
+        const now = new Date();
+        const paymentHoldUntil = new Date(now.getTime() + PAYMENT_HOLD_MINUTES * 60 * 1000);
+
+        const seats = await tx.showtimeSeat.findMany({
+            where: {
+                showtimeId: Number(showtimeId),
+                seatId: { in: normalizedSeatIds },
+                status: "HOLD",
+                heldBy: Number(userId),
+                holdUntil: { gt: now }
+            },
+            select: { id: true, seatId: true }
+        });
+
+        if (seats.length !== normalizedSeatIds.length) {
+            throw new Error("Some seats are invalid or expired");
+        }
+
+        const existingBookingSeat = await tx.bookingSeat.findFirst({
+            where: {
+                showtimeSeatId: { in: seats.map((seat) => seat.id) },
+                booking: {
+                    status: { in: ["PENDING", "CONFIRMED"] }
+                }
+            }
+        });
+
+        if (existingBookingSeat) {
+            throw new Error("Some seats already have a pending or confirmed booking");
+        }
+
+        const showtime = await tx.showtime.findUnique({
+            where: { id: Number(showtimeId) },
+            select: { price: true }
+        });
+
+        if (!showtime) throw new Error("Showtime not found");
+
+        const amount = Number(showtime.price) * seats.length;
+        const booking = await tx.booking.create({
+            data: {
+                userId: Number(userId),
+                showtimeId: Number(showtimeId),
+                totalPrice: amount,
+                status: "PENDING"
+            }
+        });
+
+        await tx.bookingSeat.createMany({
+            data: seats.map((seat) => ({
+                bookingId: booking.id,
+                showtimeSeatId: seat.id
+            }))
+        });
+
+        const holdResult = await tx.showtimeSeat.updateMany({
+            where: {
+                id: { in: seats.map((seat) => seat.id) },
+                status: "HOLD",
+                heldBy: Number(userId)
+            },
+            data: { holdUntil: paymentHoldUntil }
+        });
+
+        if (holdResult.count !== seats.length) {
+            throw new Error("Race condition: seats changed");
+        }
+
+        const orderId = `VNPAY_${booking.id}_${Date.now()}`;
+        const requestId = `${orderId}_${Math.floor(Math.random() * 1000000)}`;
+
+        const payment = await tx.payment.create({
+            data: {
+                bookingId: booking.id,
+                provider: "VNPAY",
+                amount,
+                currency: "VND",
+                status: "PENDING",
+                orderId,
+                requestId
+            }
+        });
+
+        return {
+            amount,
+            bookingId: booking.id,
+            orderId,
+            paymentId: payment.id,
+            requestId
+        };
+    });
+
+    const createDate = new Date();
+    const expireDate = new Date(createDate.getTime() + PAYMENT_HOLD_MINUTES * 60 * 1000);
+    const params = {
+        vnp_Version: "2.1.0",
+        vnp_Command: "pay",
+        vnp_TmnCode: config.tmnCode,
+        vnp_Amount: Math.round(paymentContext.amount * 100),
+        vnp_CurrCode: "VND",
+        vnp_TxnRef: paymentContext.orderId,
+        vnp_OrderInfo: `Thanh toan ve xem phim #${paymentContext.bookingId}`,
+        vnp_OrderType: "billpayment",
+        vnp_Locale: "vn",
+        vnp_ReturnUrl: config.returnUrl,
+        vnp_IpAddr: ipAddr || "127.0.0.1",
+        vnp_CreateDate: formatVnpayDate(createDate),
+        vnp_ExpireDate: formatVnpayDate(expireDate)
+    };
+
+    const secureHash = signVnpayParams(params, config.hashSecret);
+    const paymentUrl = `${config.paymentUrl}?${buildVnpaySignedQuery({ ...params, vnp_SecureHash: secureHash })}`;
+
+    await prisma.payment.update({
+        where: { id: paymentContext.paymentId },
+        data: {
+            payUrl: paymentUrl,
+            qrCodeUrl: paymentUrl,
+            rawResponse: {
+                provider: "VNPAY",
+                createParams: {
+                    ...params,
+                    vnp_SecureHash: secureHash
+                }
+            }
+        }
+    });
+
+    return {
+        bookingId: paymentContext.bookingId,
+        paymentId: paymentContext.paymentId,
+        amount: paymentContext.amount,
+        orderId: paymentContext.orderId,
+        requestId: paymentContext.requestId,
+        payUrl: paymentUrl,
+        qrCodeUrl: paymentUrl,
+        deeplink: null
+    };
+};
+
 exports.handleMomoIpn = async (body) => {
     const config = getMomoConfig();
 
@@ -427,6 +647,107 @@ exports.handleMomoIpn = async (body) => {
         paid,
         bookingId: payment.bookingId,
         paymentId: payment.id
+    };
+};
+
+exports.handleVnpayReturn = async (query) => {
+    const config = getVnpayConfig();
+
+    if (!verifyVnpaySignature(query, config.hashSecret)) {
+        throw new Error("Invalid VNPay signature");
+    }
+
+    const payment = await prisma.payment.findUnique({
+        where: { orderId: query.vnp_TxnRef },
+        include: {
+            booking: {
+                include: { bookingSeats: true }
+            }
+        }
+    });
+
+    if (!payment) throw new Error("Payment not found");
+
+    const expectedAmount = Math.round(Number(payment.amount) * 100);
+    if (Number(query.vnp_Amount) !== expectedAmount) {
+        throw new Error("Invalid VNPay amount");
+    }
+
+    if (payment.status === "PAID") {
+        return { alreadyPaid: true, bookingId: payment.bookingId };
+    }
+
+    const paid = query.vnp_ResponseCode === "00" && query.vnp_TransactionStatus === "00";
+    const showtimeSeatIds = payment.booking.bookingSeats.map((bookingSeat) => bookingSeat.showtimeSeatId);
+
+    await prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+                status: paid ? "PAID" : "FAILED",
+                transId: query.vnp_TransactionNo ? String(query.vnp_TransactionNo) : payment.transId,
+                rawResponse: query
+            }
+        });
+
+        if (!paid) {
+            await tx.booking.update({
+                where: { id: payment.bookingId },
+                data: { status: "CANCELLED" }
+            });
+
+            await tx.showtimeSeat.updateMany({
+                where: {
+                    id: { in: showtimeSeatIds },
+                    status: "HOLD",
+                    heldBy: payment.booking.userId
+                },
+                data: {
+                    status: "AVAILABLE",
+                    holdUntil: null,
+                    heldBy: null
+                }
+            });
+
+            return;
+        }
+
+        const seatResult = await tx.showtimeSeat.updateMany({
+            where: {
+                id: { in: showtimeSeatIds },
+                OR: [
+                    {
+                        status: "HOLD",
+                        heldBy: payment.booking.userId
+                    },
+                    {
+                        status: "AVAILABLE"
+                    }
+                ]
+            },
+            data: {
+                status: "BOOKED",
+                holdUntil: null,
+                heldBy: null
+            }
+        });
+
+        if (seatResult.count !== showtimeSeatIds.length) {
+            throw new Error("Cannot confirm booking because seats are no longer held");
+        }
+
+        await tx.booking.update({
+            where: { id: payment.bookingId },
+            data: { status: "CONFIRMED" }
+        });
+    });
+
+    return {
+        paid,
+        bookingId: payment.bookingId,
+        paymentId: payment.id,
+        responseCode: query.vnp_ResponseCode,
+        transactionStatus: query.vnp_TransactionStatus
     };
 };
 

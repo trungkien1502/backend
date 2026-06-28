@@ -76,6 +76,31 @@ exports.createMomoPayment = async (req, res) => {
     }
 };
 
+exports.createVnpayPayment = async (req, res) => {
+    try {
+        const { userId, showtimeId, seatIds } = req.body;
+        const ipAddr = req.headers["x-forwarded-for"]?.split(",")[0]?.trim()
+            || req.ip
+            || req.connection?.remoteAddress;
+
+        const data = await paymentService.createVnpayPayment({
+            userId: req.userId || userId,
+            showtimeId,
+            seatIds,
+            ipAddr
+        });
+
+        console.log("VNPay create response:", data);
+
+        res.json({
+            message: "VNPay payment created",
+            data
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 
 exports.handleMomoIpn = async (req, res) => {
     console.log("🔥 FULL IPN BODY:", JSON.stringify(req.body, null, 2));
@@ -144,6 +169,50 @@ exports.handleMomoReturn = async (req, res) => {
 
         res.json({
             message: "MoMo return received",
+            data: responseData
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+exports.handleVnpayReturn = async (req, res) => {
+    try {
+        console.log("VNPay return received:", {
+            orderId: req.query.vnp_TxnRef,
+            responseCode: req.query.vnp_ResponseCode,
+            transactionStatus: req.query.vnp_TransactionStatus,
+            amount: req.query.vnp_Amount
+        });
+
+        const result = await paymentService.handleVnpayReturn(req.query);
+        const payment = await getPaymentAfterReturn(req.query.vnp_TxnRef);
+
+        if (!payment) {
+            return res.status(404).json({ message: "Payment not found" });
+        }
+
+        const responseData = {
+            orderId: payment.orderId,
+            paymentStatus: payment.status,
+            booking: payment.booking,
+            responseCode: req.query.vnp_ResponseCode,
+            transactionStatus: req.query.vnp_TransactionStatus,
+            result
+        };
+
+        const appRedirectUrl = buildAppPaymentReturnUrl({
+            payment,
+            resultCode: req.query.vnp_ResponseCode,
+            message: req.query.vnp_TransactionStatus
+        });
+
+        if (appRedirectUrl && req.query.format !== "json") {
+            return res.redirect(302, appRedirectUrl);
+        }
+
+        res.json({
+            message: "VNPay return received",
             data: responseData
         });
     } catch (error) {
